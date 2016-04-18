@@ -8,23 +8,13 @@
 (define 3rd caddr)
 
 (define parse-exp         
-  (lambda (datum)
-    (cond
-     [(symbol? datum) (var-exp datum)]
-     [(number? datum) (lit-exp datum)]
-     [(pair? datum)
-      (cond
-       
-       [else (app-exp (parse-exp (1st datum))
-		      (map parse-exp (cdr datum)))])]
-     [else (eopl:error 'parse-exp "bad expression: ~s" datum)])))
+	(lambda (datum)
+		(cond
+			[(symbol? datum) (var-exp datum)]
+			[(number? datum) (lit-exp datum)]
+			[(pair? datum)
+				(cond
 
-
-
-
-
-
-
-
-
-
+					[else (app-exp (parse-exp (1st datum))
+						(map parse-exp (cdr datum)))])]
+			[else (eopl:error 'parse-exp "bad expression: ~s" datum)])))
