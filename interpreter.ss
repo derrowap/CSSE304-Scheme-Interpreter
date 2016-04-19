@@ -1,5 +1,11 @@
 ; top-level-eval evaluates a form in the global environment
 
+(define global-env
+	(extend-env
+		*prim-proc-names*
+		(map prim-proc *prim-proc-names*)
+		(empty-env)))
+
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
@@ -37,8 +43,8 @@
 				[lambda-exp (params bodies)
 					(closure params bodies env)]
 				[app-exp (rator rands)
-					(let ([proc-value (eval-exp rator)]
-							[args (eval-rands rands)])
+					(let ([proc-value (eval-exp rator env)]
+							[args (eval-rands rands env)])
 						(apply-proc proc-value args))]
 				[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)]))))
 
@@ -65,7 +71,10 @@
 (define apply-proc
 	(lambda (proc-value args)
 		(cases proc-val proc-value
-			[prim-proc (op) (apply-prim-proc op args)]
+			[prim-proc (op)
+				(apply-prim-proc op args)]
+			[closure (params bodies env)
+				(eval-bodies bodies (extend-env params args env))]
 			; You will add other cases
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
