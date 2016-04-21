@@ -1,4 +1,12 @@
+; Adam Gastineau and Austin Derrow-Pinion
+
 ; top-level-eval evaluates a form in the global environment
+
+(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < > >= <= cons car cdr caar cdar cadr cddr
+								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null?
+								assq eq? equal? atom? length list->vector list? pair? procedure?
+								vector->list vector make-vector vector-ref vector? number?
+								symbol? set-car! set-cdr! vector-set! display newline))
 
 (define global-env
 	(extend-env
@@ -9,44 +17,46 @@
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
-		(eval-exp form (empty-env))))
+		(eval-exp form global-env)))
 
 ; eval-exp is the main component of the interpreter
 
+(define identity-proc
+	(lambda (x) x))
+
 (define eval-exp
-	(let ([identity-proc (lambda (x) x)])
-		(lambda (exp env)
-			(cases expression exp
-				[lit-exp (datum) datum]
-				[var-exp (id)
-					(apply-env env id; look up its value.
-						identity-proc ; procedure to call if id is in the environment 
-						(lambda () 
-						   	(apply-env global-env
-						   		id
-						   		identity-proc
-						   		(lambda ()
-						   			(eopl:error 'apply-env ; procedure to call if id not in env
-						   				"variable not found in environment: ~s" id)))))]
-				; TODO: Update to use our actual datatype (code from in class)
-				[let-exp (vars exps bodies)
-					(let ([extended-env (extend-env vars 
-											(eval-rands exps env) 
-											env)])
-						(eval-bodies bodies extended-env))]
-				; TODO: Update to use our actual datatype (code from in class)
-				[if-exp (testexp then-exp else-exp)
-					(if (eval-exp testexp env)
-						(eval-exp then-exp env)
-						(eval-exp else-exp env))]
-				; TODO: Update to use our actual datatype (code from in class)
-				[lambda-exp (params bodies)
-					(closure params bodies env)]
-				[app-exp (rator rands)
-					(let ([proc-value (eval-exp rator env)]
-							[args (eval-rands rands env)])
-						(apply-proc proc-value args))]
-				[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)]))))
+	(lambda (exp env)
+		(cases expression exp
+			[lit-exp (datum) datum]
+			[var-exp (id)
+				(apply-env env id; look up its value.
+					identity-proc ; procedure to call if id is in the environment 
+					(lambda () 
+					   	(apply-env global-env
+					   		id
+					   		identity-proc
+					   		(lambda ()
+					   			(eopl:error 'apply-env ; procedure to call if id not in env
+					   				"variable not found in environment: ~s" id)))))]
+			[let-exp (ids idlist body)
+				(let ([extended-env (extend-env ids 
+										(eval-rands idlist env)
+										env)])
+					(eval-bodies body extended-env))]
+			[if-exp (test result)
+				(if (eval-exp test env)
+					(eval-exp result env))]
+			[if-else-exp (test result elseRes)
+				(if (eval-exp test env)
+					(eval-exp result env)
+					(eval-exp elseRes env))]
+			[lambda-exp (ids body)
+				(closure ids body env)]
+			[app-exp (rator rands)
+				(let ([proc-value (eval-exp rator env)]
+						[args (eval-rands rands env)])
+					(apply-proc proc-value args))]
+			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
 
@@ -80,28 +90,82 @@
 				"Attempt to apply bad procedure: ~s" 
 				proc-value)])))
 
-(define *prim-proc-names* '(+ - * add1 sub1 cons =))
-
-(define init-env         ; for now, our initial global environment only contains 
-	(extend-env            ; procedure names.  Recall that an environment associates
-		*prim-proc-names*   ;  a value (not an expression) with an identifier.
-		(map prim-proc      
-			*prim-proc-names*)
-		(empty-env)))
-
 ; Usually an interpreter must define each 
 ; built-in procedure individually.  We are "cheating" a little bit.
+
+(define apply-procedure-to-all
+	(lambda (procedure args result)
+		(if (null? args)
+			result
+			(apply-procedure-to-all procedure (cdr args) (procedure result (car args))))))
+
+(define apply-list
+	(lambda (ls)
+		(if (null? ls)
+			'()
+			(cons (car ls) (apply-list (cdr ls))))))
+
+(define apply-vector
+	(lambda (vec n args)
+		(if (null? args)
+			vec
+			(begin (vector-set! vec n (car arg)) (apply-vector (vec (+ n 1) (cdr args)))))))
 
 (define apply-prim-proc
 	(lambda (prim-proc args)
 		(case prim-proc
-			[(+) (+ (1st args) (2nd args))]
-			[(-) (- (1st args) (2nd args))]
-			[(*) (* (1st args) (2nd args))]
+			; TODO: Add exception handler
+			[(+) (apply-procedure-to-all + (cdr args) (car args))]
+			[(-) (apply-procedure-to-all - (cdr args) (car args))]
+			[(*) (apply-procedure-to-all * (cdr args) (car args))]
+			[(/) (apply-procedure-to-all / (cdr args) (car args))]
 			[(add1) (+ (1st args) 1)]
 			[(sub1) (- (1st args) 1)]
-			[(cons) (cons (1st args) (2nd args))]
+			[(zero?) (= (1st args) 0)]
+			[(not) (not (1st args))]
 			[(=) (= (1st args) (2nd args))]
+			[(<) (< (1st args) (2nd args))]
+			[(>) (> (1st args) (2nd args))]
+			[(>=) (>= (1st args) (2nd args))]
+			[(<=) (<= (1st args) (2nd args))]
+			[(cons) (cons (1st args) (2nd args))]
+			[(car) (car (1st args))]
+			[(cdr) (cdr (1st args))]
+			[(caar) (caar (1st args))]
+			[(cdar) (cdar (1st args))]
+			[(cadr) (cadr (1st args))]
+			[(cddr) (cddr (1st args))]
+			[(caddr) (caddr (1st args))]
+			[(caadr) (caadr (1st args))]
+			[(cdadr) (cdadr (1st args))]
+			[(cdddr) (cdddr (1st args))]
+			[(caaar) (caaar (1st args))]
+			[(cadar) (cadar (1st args))]
+			[(cdaar) (cdaar (1st args))]
+			[(cddar) (cddar (1st args))]
+			[(list) (apply-list args)]
+			[(null?) (null? (1st args))]
+			[(assq) (assq (1st args) (2nd args))]
+			[(eq?) (eq? (1st args) (2nd args))]
+			[(equal?) (equal? (1st args) (2nd args))]
+			[(atom?) (not (pair? (1st args)))]
+			[(length) (length (1st args))]
+			[(list->vector) (list->vector (1st args))]
+			[(list?) (list? (1st args))]
+			[(pair?) (pair? (1st args))]
+			[(procedure?) (proc-val? (1st args))]
+			[(vector->list) (vector->list (1st args))]
+			[(vector) (apply-vector (make-vector (length args)) 0 args)]
+			[(make-vector) (make-vector (1st args))]
+			[(vector-ref) (vector-ref (1st args) (2nd args))]
+			[(vector?) (vector? (1st args))]
+			[(number?) (number? (1st args))]
+			[(symbol?) (symbol? (1st args))]
+			[(set-car!) (set-car! (1st args) (2nd args))]
+			[(set-cdr!) (set-cdr! (1st args) (2nd args))]
+			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
+			[(display) (display (1st args))]
+			[(newline) (newline)]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
 				prim-op)])))
