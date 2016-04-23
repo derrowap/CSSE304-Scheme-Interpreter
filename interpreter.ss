@@ -6,7 +6,8 @@
 								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null?
 								assq eq? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
-								symbol? set-car! set-cdr! vector-set! display newline))
+								symbol? set-car! set-cdr! vector-set! display newline
+								map apply ))
 
 (define global-env
 	(extend-env
@@ -41,9 +42,9 @@
 			[lambda-exp (ids body)
 				(closure ids body env)]
 			[lambda-list-exp (idlist body)
-				(closure idlist body env)]
+				(closure (list idlist) body env)]
 			[let-exp (ids idlist body)
-				(let ([extended-env (extend-env ids 
+				(let ([extended-env (extend-env ids
 										(eval-rands idlist env)
 										env)])
 					(eval-bodies body extended-env))]
@@ -64,8 +65,8 @@
 
 (define eval-rands
 	(lambda (rands env)
-		(map (lambda (x) 
-				(eval-exp x env)) 
+		(map (lambda (x)
+				(eval-exp x env))
 			rands)))
 
 ; Evaluates a series of bodies in the given environment.
@@ -100,6 +101,13 @@
 		(if (null? args)
 			result
 			(apply-procedure-to-all procedure (cdr args) (procedure result (car args))))))
+
+(define apply-map
+	(lambda (f args)
+		(if (null? (caar args))
+			'()
+			(append (map (lambda (x) (apply-proc f x)) (map (lambda (x) (map car x)) args)) 
+				(apply-map f (map (lambda (x) (map cdr x)) args))))))
 
 (define apply-prim-proc
 	(lambda (prim-proc args)
@@ -145,7 +153,6 @@
 			[(pair?) (pair? (1st args))]
 			[(procedure?) (proc-val? (1st args))]
 			[(vector->list) (vector->list (1st args))]
-			;[(vector) (apply-vector (make-vector (length args)) 0 args)]
 			[(vector) (list->vector args)]
 			[(make-vector) (make-vector (1st args))]
 			[(vector-ref) (vector-ref (1st args) (2nd args))]
@@ -157,6 +164,8 @@
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
 			[(newline) (newline)]
+			[(map) (apply-map (1st args) (list (cdr args)))]
+			[(apply) (apply-proc (1st args) (2nd args))]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
 				prim-op)])))
