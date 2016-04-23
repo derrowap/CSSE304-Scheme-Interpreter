@@ -43,6 +43,8 @@
 				(closure ids body env)]
 			[lambda-list-exp (idlist body)
 				(closure (list idlist) body env)]
+			[lambda-improper-exp (ids idlist body)
+				(closure (list ids idlist) body env)]
 			[let-exp (ids idlist body)
 				(let ([extended-env (extend-env ids
 										(eval-rands idlist env)
@@ -56,6 +58,7 @@
 					(eval-exp result env)
 					(eval-exp elseRes env))]
 			[app-exp (rator rands)
+				; TODO: I think this may be where to handle applying special lambda's
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
 					(apply-proc proc-value args))]
