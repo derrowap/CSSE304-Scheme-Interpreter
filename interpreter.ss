@@ -38,6 +38,10 @@
 					   		(lambda ()
 					   			(eopl:error 'apply-env ; procedure to call if id not in env
 					   				"variable not found in environment: ~s" id)))))]
+			[lambda-exp (ids body)
+				(closure ids body env)]
+			[lambda-list-exp (idlist body)
+				(closure idlist body env)]
 			[let-exp (ids idlist body)
 				(let ([extended-env (extend-env ids 
 										(eval-rands idlist env)
@@ -50,8 +54,6 @@
 				(if (eval-exp test env)
 					(eval-exp result env)
 					(eval-exp elseRes env))]
-			[lambda-exp (ids body)
-				(closure ids body env)]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -66,7 +68,7 @@
 				(eval-exp x env)) 
 			rands)))
 
-; Applies a 
+; Evaluates a series of bodies in the given environment.
 (define eval-bodies
 	(lambda (bodies env)
 		(let loop ([bodies bodies])
@@ -98,18 +100,6 @@
 		(if (null? args)
 			result
 			(apply-procedure-to-all procedure (cdr args) (procedure result (car args))))))
-
-(define apply-list
-	(lambda (ls)
-		(if (null? ls)
-			'()
-			(cons (car ls) (apply-list (cdr ls))))))
-
-(define apply-vector
-	(lambda (vec n args)
-		(if (null? args)
-			vec
-			(begin (vector-set! vec n (car arg)) (apply-vector (vec (+ n 1) (cdr args)))))))
 
 (define apply-prim-proc
 	(lambda (prim-proc args)
@@ -143,7 +133,7 @@
 			[(cadar) (cadar (1st args))]
 			[(cdaar) (cdaar (1st args))]
 			[(cddar) (cddar (1st args))]
-			[(list) (apply-list args)]
+			[(list) args]
 			[(null?) (null? (1st args))]
 			[(assq) (assq (1st args) (2nd args))]
 			[(eq?) (eq? (1st args) (2nd args))]
@@ -155,7 +145,8 @@
 			[(pair?) (pair? (1st args))]
 			[(procedure?) (proc-val? (1st args))]
 			[(vector->list) (vector->list (1st args))]
-			[(vector) (apply-vector (make-vector (length args)) 0 args)]
+			;[(vector) (apply-vector (make-vector (length args)) 0 args)]
+			[(vector) (list->vector args)]
 			[(make-vector) (make-vector (1st args))]
 			[(vector-ref) (vector-ref (1st args) (2nd args))]
 			[(vector?) (vector? (1st args))]
