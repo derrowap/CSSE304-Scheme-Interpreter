@@ -46,7 +46,7 @@
 			[lambda-improper-exp (ids idlist body)
 				(closure-improper ids idlist body env)]
 			[let-exp (ids idlist body)
-				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda by syntax-expand: ~a" exp)]
+				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[if-exp (test result)
 				(if (eval-exp test env)
 					(eval-exp result env))]
@@ -54,6 +54,8 @@
 				(if (eval-exp test env)
 					(eval-exp result env)
 					(eval-exp elseRes env))]
+			[begin-exp (body)
+				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -71,8 +73,8 @@
 				(lambda-list-exp idlist (map syntax-expand body))]
 			[lambda-improper-exp (ids idlist body)
 				(lambda-improper-exp ids idlist (map syntax-expand body))]
-			[let-exp (ids idlist body)
-				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand idlist))]
+			[let-exp (ids values body)
+				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand values))]
 			[if-exp (test result)
 				(if-exp 
 					(syntax-expand test)
@@ -82,6 +84,8 @@
 					(syntax-expand test)
 					(syntax-expand result)
 					(syntax-expand elseRes))]
+			[begin-exp (body)
+				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)

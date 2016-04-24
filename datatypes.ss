@@ -56,6 +56,8 @@
 	[app-exp
 		(rator expression?)
 		(rands (list-of expression?))]
+	[begin-exp
+		(body (list-of expression?))]
 	[set!-exp
 		(id symbol?)
 		(rvalue expression?)])
