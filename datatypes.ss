@@ -102,5 +102,14 @@
 	[closure
 		(params (list-of symbol?))
 		(bodies (list-of expression?))
+		(env environment?)]
+	[closure-list
+		(listsymbol symbol?)
+		(bodies (list-of expression?))
+		(env environment?)]
+	[closure-improper
+		(params (list-of symbol?))
+		(listsymbol symbol?)
+		(bodies (list-of expression?))
 		(env environment?)])
 	 

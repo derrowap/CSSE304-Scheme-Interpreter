@@ -42,9 +42,9 @@
 			[lambda-exp (ids body)
 				(closure ids body env)]
 			[lambda-list-exp (idlist body)
-				(closure (list idlist) body env)]
+				(closure-list idlist body env)]
 			[lambda-improper-exp (ids idlist body)
-				(closure (list ids idlist) body env)]
+				(closure-improper ids idlist body env)]
 			[let-exp (ids idlist body)
 				(let ([extended-env (extend-env ids
 										(eval-rands idlist env)
@@ -80,6 +80,13 @@
 				(eval-exp (car bodies) env)
 				(begin (eval-exp (car bodies) env) (loop (cdr bodies)))))))
 
+
+(define extract-extra-args-closure-improper
+	(lambda (params args)
+		(if (null? params)
+			(list args)
+			(cons (car args) (extract-extra-args-closure-improper (cdr params) (cdr args))))))
+
 ;  Apply a procedure to its arguments.
 ;  At this point, we only have primitive procedures.  
 ;  User-defined procedures will be added later.
@@ -91,6 +98,10 @@
 				(apply-prim-proc op args)]
 			[closure (params bodies env)
 				(eval-bodies bodies (extend-env params args env))]
+			[closure-list (listsymbol bodies env)
+				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
+			[closure-improper (params listsymbol bodies env)
+				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env))]
 			; You will add other cases
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
