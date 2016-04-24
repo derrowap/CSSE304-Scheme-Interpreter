@@ -36,24 +36,6 @@
 										(car improper)
 										(cadr improper)
 										(map parse-exp (cddr datum))))]))]
-					[(eqv? (car datum) 'letrec)
-						(cond
-							[(or (null? (cdr datum)) (null? (cddr datum)))
-								(eopl:error 'parse-exp "letrec-exp: incorrect length: ~s" datum)]
-							[(not (list? (2nd datum)))
-								(eopl:error 'parse-exp "letrec-exp: declarations not in list: ~s" datum)]
-							[(not (andmap list? (2nd datum)))
-								(eopl:error 'parse-exp "letrec-exp: declarations are not a list: ~s" datum)]
-							[(not (andmap let-def-symbol? (2nd datum)))
-								(eopl:error 'parse-exp "letrec-exp: vars must be symbols: ~s" datum)]
-							[(ormap let-def-invalid-length? (2nd datum))
-								(eopl:error 'parse-exp "letrec-exp: declaration must be a list of length 2: ~s" datum)]
-							[else
-								(letrec-exp 
-									(map car (2nd datum))
-									(map let-symbols (2nd datum))
-									(map parse-exp (cddr datum)))])]
-
 					[(eqv? (car datum) 'let)
 						(cond
 							[(or (null? (cdr datum)) (null? (cddr datum)))
@@ -108,6 +90,23 @@
 									(map car (2nd datum))
 									(map let-symbols (2nd datum))
 									(map parse-exp (cddr datum)))])]
+					[(eqv? (car datum) 'letrec)
+						(cond
+							[(or (null? (cdr datum)) (null? (cddr datum)))
+								(eopl:error 'parse-exp "letrec-exp: incorrect length: ~s" datum)]
+							[(not (list? (2nd datum)))
+								(eopl:error 'parse-exp "letrec-exp: declarations not in list: ~s" datum)]
+							[(not (andmap list? (2nd datum)))
+								(eopl:error 'parse-exp "letrec-exp: declarations are not a list: ~s" datum)]
+							[(not (andmap let-def-symbol? (2nd datum)))
+								(eopl:error 'parse-exp "letrec-exp: vars must be symbols: ~s" datum)]
+							[(ormap let-def-invalid-length? (2nd datum))
+								(eopl:error 'parse-exp "letrec-exp: declaration must be a list of length 2: ~s" datum)]
+							[else
+								(letrec-exp 
+									(map car (2nd datum))
+									(map let-symbols (2nd datum))
+									(map parse-exp (cddr datum)))])]
 					[(eqv? (car datum) 'if)
 						(cond
 							[(or (null? (cdr datum)) (null? (cddr datum)))
@@ -117,15 +116,21 @@
 							[(not (null? (cddddr datum)))
 								(eopl:error 'parse-exp "if-exp: invalid length: ~s" datum)]
 							[else (if-else-exp (parse-exp (2nd datum)) (parse-exp (3rd datum)) (parse-exp (4th datum)))])]
+					[(eqv? (car datum) 'begin)
+						(begin-exp (map parse-exp (cdr datum)))]
 					[(eqv? (car datum) 'set!)
 						(if (or (null? (cdr datum)) (null? (cddr datum)) (not (null? (cdddr datum))))
 							(eopl:error 'parse-exp "set!-exp: invalid length: ~s" datum)
 							(set!-exp (cadr datum)
 								(parse-exp (3rd datum))))]
-					[(eqv? (car datum) 'begin)
-						(begin-exp (map parse-exp (cdr datum)))]
-
-
+					[(eqv? (car datum) 'cond)
+						(cond-exp 
+							(map (lambda (x) 
+									(if (eqv? (car x) 'else)
+										(lit-exp #t)
+										(parse-exp (car x))))
+								(cdr datum))
+							(map (lambda (x) (map parse-exp (cdr x))) (cdr datum)))]
 					[else (app-exp 
 						(parse-exp (1st datum))
 							(map parse-exp (cdr datum)))])]

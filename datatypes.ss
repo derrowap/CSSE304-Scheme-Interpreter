@@ -53,14 +53,20 @@
 		(test expression?)
 		(result expression?)
 		(elseRes expression?)]
-	[app-exp
-		(rator expression?)
-		(rands (list-of expression?))]
 	[begin-exp
 		(body (list-of expression?))]
 	[set!-exp
 		(id symbol?)
-		(rvalue expression?)])
+		(rvalue expression?)]
+	[cond-exp
+		(tests (list-of expression?))
+		(results (list-of (list-of expression?)))]
+	;[and-exp
+	;[or-exp
+	;[case-exp
+	[app-exp
+		(rator expression?)
+		(rands (list-of expression?))])
 
 (define let-symbols
 	(lambda (x)

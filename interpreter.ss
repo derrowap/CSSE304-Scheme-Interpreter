@@ -47,6 +47,12 @@
 				(closure-improper ids idlist body env)]
 			[let-exp (ids idlist body)
 				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
+			[let*-exp (ids values body)
+				(eopl:error 'eval-exp "let*-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
+			;[letrec-exp (ids values body)
+			; TODO: not yet implemented
+			;[named-let-exp (name ids values body)
+			; TODO: not yet implemented
 			[if-exp (test result)
 				(if (eval-exp test env)
 					(eval-exp result env))]
@@ -56,6 +62,16 @@
 					(eval-exp elseRes env))]
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
+			;[set!-exp (id rvalue)
+			; TODO: not yet implemented
+			[cond-exp (tests results)
+				(eopl:error 'eval-exp "cond-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
+			;[and-exp
+			; TODO: not yet implemented
+			;[or-exp
+			; TODO: not yet implemented
+			;[case-exp
+			; TODO: not yet implemented
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -75,6 +91,12 @@
 				(lambda-improper-exp ids idlist (map syntax-expand body))]
 			[let-exp (ids values body)
 				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand values))]
+			;[let*-exp (ids values body)
+			; TODO: not yet implemented
+			;[letrec-exp (ids values body)
+			; TODO: not yet implemented
+			;[named-let-exp (name ids values body)
+			; TODO: not yet implemented
 			[if-exp (test result)
 				(if-exp 
 					(syntax-expand test)
@@ -86,6 +108,23 @@
 					(syntax-expand elseRes))]
 			[begin-exp (body)
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
+			;[set!-exp (id rvalue)
+			; TODO: not yet implemented
+			[cond-exp (tests results)
+				(if (null? (cdr tests))
+					(if-exp
+						(syntax-expand (car tests))
+						(app-exp (lambda-exp '() (map syntax-expand (car results))) '()))
+					(if-else-exp 
+						(syntax-expand (car tests))
+						(app-exp (lambda-exp '() (map syntax-expand (car results))) '())
+						(syntax-expand (cond-exp (cdr tests) (cdr results)))))]
+			;[and-exp
+			; TODO: not yet implemented
+			;[or-exp
+			; TODO: not yet implemented
+			;[case-exp
+			; TODO: not yet implemented
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)
