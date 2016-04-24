@@ -46,10 +46,7 @@
 			[lambda-improper-exp (ids idlist body)
 				(closure-improper ids idlist body env)]
 			[let-exp (ids idlist body)
-				(let ([extended-env (extend-env ids
-										(eval-rands idlist env)
-										env)])
-					(eval-bodies body extended-env))]
+				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda by syntax-expand: ~a" exp)]
 			[if-exp (test result)
 				(if (eval-exp test env)
 					(eval-exp result env))]
@@ -58,10 +55,37 @@
 					(eval-exp result env)
 					(eval-exp elseRes env))]
 			[app-exp (rator rands)
-				; TODO: I think this may be where to handle applying special lambda's
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
 					(apply-proc proc-value args))]
+			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
+
+(define syntax-expand
+	(lambda (exp)
+		(cases expression exp
+			[lit-exp (datum) (lit-exp datum)]
+			[var-exp (id) (var-exp id)]
+			[lambda-exp (ids body)
+				(lambda-exp ids (map syntax-expand body))]
+			[lambda-list-exp (idlist body)
+				(lambda-list-exp idlist (map syntax-expand body))]
+			[lambda-improper-exp (ids idlist body)
+				(lambda-improper-exp ids idlist (map syntax-expand body))]
+			[let-exp (ids idlist body)
+				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand idlist))]
+			[if-exp (test result)
+				(if-exp 
+					(syntax-expand test)
+					(syntax-expand result))]
+			[if-else-exp (test result elseRes)
+				(if-else-exp
+					(syntax-expand test)
+					(syntax-expand result)
+					(syntax-expand elseRes))]
+			[app-exp (rator rands)
+				(app-exp
+					(syntax-expand rator)
+					(map syntax-expand rands))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 ; evaluate the list of operands, putting results into a list
@@ -188,10 +212,10 @@
 	(lambda ()
 		(display "--> ")
 		;; notice that we don't save changes to the environment...
-		(let ([answer (top-level-eval (parse-exp (read)))])
+		(let ([answer (eval-one-exp (read))])
 			;; TODO: are there answers that should display differently?
 			(eopl:pretty-print answer) (newline)
 			(rep))))  ; tail-recursive, so stack doesn't grow.
 
 (define eval-one-exp
-	(lambda (x) (top-level-eval (parse-exp x))))
+	(lambda (x) (top-level-eval (syntax-expand (parse-exp x)))))
