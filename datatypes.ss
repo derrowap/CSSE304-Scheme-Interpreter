@@ -63,7 +63,8 @@
 		(results (list-of (list-of expression?)))]
 	[and-exp
 		(bodies (list-of expression?))]
-	;[or-exp
+	[or-exp
+		(bodies (list-of expression?))]
 	;[case-exp
 	[app-exp
 		(rator expression?)

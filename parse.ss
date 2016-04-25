@@ -135,6 +135,10 @@
 						(if (null? (cdr datum))
 							(lit-exp #t)
 							(and-exp (map parse-exp (cdr datum))))]
+					[(eqv? (car datum) 'or)
+						(if (null? (cdr datum))
+							(lit-exp #f)
+							(or-exp (map parse-exp (cdr datum))))]
 					[else (app-exp 
 						(parse-exp (1st datum))
 							(map parse-exp (cdr datum)))])]

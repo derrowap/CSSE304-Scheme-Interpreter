@@ -67,8 +67,9 @@
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
-				(eopl:error 'eval-exp "and-exp should have been transformed into a if-exp's by syntax-expand: ~a" exp)]
-			;[or-exp
+				(eopl:error 'eval-exp "and-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
+			[or-exp (bodies)
+				(eopl:error 'eval-exp "or-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			;[case-exp
 			; TODO: not yet implemented
 			[app-exp (rator rands)
@@ -128,8 +129,13 @@
 						(syntax-expand (car bodies))
 						(syntax-expand (and-exp (cdr bodies)))
 						(lit-exp #f)))]
-			;[or-exp
-			; TODO: not yet implemented
+			[or-exp (bodies)
+				(if-else-exp
+					(syntax-expand (car bodies))
+					(syntax-expand (car bodies))
+					(if (null? (cdr bodies))
+						(lit-exp #f)
+						(syntax-expand (or-exp (cdr bodies)))))]
 			;[case-exp
 			; TODO: not yet implemented
 			[app-exp (rator rands)
