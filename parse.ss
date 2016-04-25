@@ -131,6 +131,10 @@
 										(parse-exp (car x))))
 								(cdr datum))
 							(map (lambda (x) (map parse-exp (cdr x))) (cdr datum)))]
+					[(eqv? (car datum) 'and)
+						(if (null? (cdr datum))
+							(lit-exp #t)
+							(and-exp (map parse-exp (cdr datum))))]
 					[else (app-exp 
 						(parse-exp (1st datum))
 							(map parse-exp (cdr datum)))])]

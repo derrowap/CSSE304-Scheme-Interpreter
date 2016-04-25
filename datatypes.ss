@@ -61,7 +61,8 @@
 	[cond-exp
 		(tests (list-of expression?))
 		(results (list-of (list-of expression?)))]
-	;[and-exp
+	[and-exp
+		(bodies (list-of expression?))]
 	;[or-exp
 	;[case-exp
 	[app-exp

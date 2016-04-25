@@ -65,11 +65,10 @@
 			;[set!-exp (id rvalue)
 			; TODO: not yet implemented
 			[cond-exp (tests results)
-				(eopl:error 'eval-exp "cond-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
-			;[and-exp
-			; TODO: not yet implemented
+				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
+			[and-exp (bodies)
+				(eopl:error 'eval-exp "and-exp should have been transformed into a if-exp's by syntax-expand: ~a" exp)]
 			;[or-exp
-			; TODO: not yet implemented
 			;[case-exp
 			; TODO: not yet implemented
 			[app-exp (rator rands)
@@ -119,8 +118,16 @@
 						(syntax-expand (car tests))
 						(app-exp (lambda-exp '() (map syntax-expand (car results))) '())
 						(syntax-expand (cond-exp (cdr tests) (cdr results)))))]
-			;[and-exp
-			; TODO: not yet implemented
+			[and-exp (bodies)
+				(if (null? (cdr bodies))
+					(if-else-exp
+						(syntax-expand (car bodies))
+						(syntax-expand (car bodies))
+						(lit-exp #f))
+					(if-else-exp
+						(syntax-expand (car bodies))
+						(syntax-expand (and-exp (cdr bodies)))
+						(lit-exp #f)))]
 			;[or-exp
 			; TODO: not yet implemented
 			;[case-exp
