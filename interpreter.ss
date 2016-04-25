@@ -49,8 +49,8 @@
 				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[let*-exp (ids values body)
 				(eopl:error 'eval-exp "let*-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
-			;[letrec-exp (ids values body)
-			; TODO: not yet implemented
+			[letrec-exp (ids values body)
+				(eopl:error 'eval-exp "letrec-exp should have been transformed by syntax-expand: ~a" exp)]
 			;[named-let-exp (name ids values body)
 			; TODO: not yet implemented
 			[if-exp (test result)
@@ -63,7 +63,7 @@
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;[set!-exp (id rvalue)
-			; TODO: not yet implemented
+			;	(set! id (eval-exp rvalue))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -75,7 +75,7 @@
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (name bind)
-				(set! global-env (extend-env (list name) (list (eval-exp bind env)) env))]
+				(set! global-env (extend-env (list name) (list (eval-exp bind env)) global-env))]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -122,7 +122,7 @@
 			[begin-exp (body)
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
 			;[set!-exp (id rvalue)
-			; TODO: not yet implemented
+			;	(set!-exp id rvalue)]
 			[cond-exp (tests results)
 				(if (null? (cdr tests))
 					(if-exp
@@ -157,23 +157,20 @@
 						(syntax-expand (1st results))
 						(syntax-expand (case-exp key (cdr tests) (cdr results)))))]
 			[while-exp (test bodies)
-				;(syntax-expand (parse-exp `(begin [define while-test (if (evaltest (void) (begin (bodies) while-test))] while-test)))]
-				; Equivalent to:
-				;(lambda ()
-				;	(define while-test
-				;		(lambda ()
-				;			(if (test)
-				;				(begin
-				;					bodies
-				;					(while-test)))))
-				;	(while-test)))
-				(app-exp
-					(lambda-exp '()
-						(list (define-exp 'while-test
-							(lambda-exp '()
-								(list (if-exp (syntax-expand test)
-									(syntax-expand (begin-exp (append (map syntax-expand bodies) (list (app-exp (var-exp 'while-test) '())))))))))
-						(app-exp (var-exp 'while-test) '()))) '())]
+				(app-exp (lambda-exp (list 'x) (list (app-exp (var-exp 'x) (list (var-exp 'x)))))
+					(list (lambda-exp (list 'y) (list (if-exp
+						(syntax-expand test)
+						(app-exp (lambda-exp '()
+							(append bodies
+									(list (app-exp (var-exp 'y) (list (var-exp 'y))))))
+							'()))))))]
+			; equivalent to:
+			;((lambda (x) (x x))
+			;	(lambda (y)
+			;		(if test
+			;			((lambda ()
+			;				bodies
+			;				(y y))))))
 			[define-exp (name bind)
 				(define-exp name bind)]
 			[app-exp (rator rands)
