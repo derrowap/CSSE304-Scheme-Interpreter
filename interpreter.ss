@@ -70,13 +70,17 @@
 				(eopl:error 'eval-exp "and-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[or-exp (bodies)
 				(eopl:error 'eval-exp "or-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
-			;[case-exp
-			; TODO: not yet implemented
+			[case-exp (key tests results)
+				(eopl:error 'eval-exp "case-exp should have been transformed by syntax-expand: ~a" exp)]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
 					(apply-proc proc-value args))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
+
+(define case-or-expression
+	(lambda (key test)
+		(syntax-expand (or-exp (map (lambda (x) (app-exp (var-exp `equal?) (list key x))) test)))))
 
 (define syntax-expand
 	(lambda (exp)
@@ -118,20 +122,20 @@
 			[cond-exp (tests results)
 				(if (null? (cdr tests))
 					(if-exp
-						(syntax-expand (car tests))
-						(app-exp (lambda-exp '() (map syntax-expand (car results))) '()))
+						(syntax-expand (1st tests))
+						(app-exp (lambda-exp '() (map syntax-expand (1st results))) '()))
 					(if-else-exp 
-						(syntax-expand (car tests))
-						(app-exp (lambda-exp '() (map syntax-expand (car results))) '())
+						(syntax-expand (1st tests))
+						(app-exp (lambda-exp '() (map syntax-expand (1st results))) '())
 						(syntax-expand (cond-exp (cdr tests) (cdr results)))))]
 			[and-exp (bodies)
 				(if (null? (cdr bodies))
 					(if-else-exp
-						(syntax-expand (car bodies))
-						(syntax-expand (car bodies))
+						(syntax-expand (1st bodies))
+						(syntax-expand (1st bodies))
 						(lit-exp #f))
 					(if-else-exp
-						(syntax-expand (car bodies))
+						(syntax-expand (1st bodies))
 						(syntax-expand (and-exp (cdr bodies)))
 						(lit-exp #f)))]
 			[or-exp (bodies)
@@ -141,8 +145,18 @@
 					(if (null? (cdr bodies))
 						(lit-exp #f)
 						(syntax-expand (or-exp (cdr bodies)))))]
-			;[case-exp
-			; TODO: not yet implemented
+			[case-exp (key tests results)
+				(if (null? (cdr tests))
+					(if-exp (case-or-expression key (1st tests))
+						(syntax-expand (1st results)))
+					(if-else-exp (case-or-expression key (1st tests))
+						(syntax-expand (1st results))
+						(syntax-expand (case-exp key (cdr tests) (cdr results)))))]
+			; (if (or (equal? key (1st (1st tests))) (equal? key (2nd (1st tests))) ...)
+			;		  (1st results)
+			;		  (if (or ...)
+			;			  (2nd results)
+			;			  (last results)))
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)

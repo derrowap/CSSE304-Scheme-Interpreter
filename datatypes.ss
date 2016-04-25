@@ -65,7 +65,10 @@
 		(bodies (list-of expression?))]
 	[or-exp
 		(bodies (list-of expression?))]
-	;[case-exp
+	[case-exp
+		(key expression?)
+		(tests (list-of (list-of expression?)))
+		(results (list-of expression?))]
 	[app-exp
 		(rator expression?)
 		(rands (list-of expression?))])
