@@ -72,6 +72,9 @@
 	[while-exp
 		(test expression?)
 		(bodies (list-of expression?))]
+	[define-exp
+		(name symbol?)
+		(bind expression?)]
 	[app-exp
 		(rator expression?)
 		(rands (list-of expression?))])
