@@ -7,7 +7,7 @@
 								assq eq? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
 								symbol? set-car! set-cdr! vector-set! display newline
-								map apply ))
+								map apply quotient ))
 
 (define global-env
 	(extend-env
@@ -72,6 +72,8 @@
 				(eopl:error 'eval-exp "or-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[case-exp (key tests results)
 				(eopl:error 'eval-exp "case-exp should have been transformed by syntax-expand: ~a" exp)]
+			[while-exp (test bodies)
+				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -152,11 +154,8 @@
 					(if-else-exp (case-or-expression key (1st tests))
 						(syntax-expand (1st results))
 						(syntax-expand (case-exp key (cdr tests) (cdr results)))))]
-			; (if (or (equal? key (1st (1st tests))) (equal? key (2nd (1st tests))) ...)
-			;		  (1st results)
-			;		  (if (or ...)
-			;			  (2nd results)
-			;			  (last results)))
+			;[while-exp (test bodies)
+			; TODO: not yet implemented
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)
@@ -279,6 +278,7 @@
 			[(newline) (newline)]
 			[(map) (apply-map (1st args) (list (cdr args)))]
 			[(apply) (apply-proc (1st args) (2nd args))]
+			[(quotient) (quotient (1st args) (2nd args))]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
 				prim-op)])))

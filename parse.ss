@@ -147,6 +147,8 @@
 										(map parse-exp (1st x))))
 								(cddr datum))
 							(map (lambda (x) (begin-exp (map parse-exp (cdr x)))) (cddr datum)))]
+					[(eqv? (1st datum) 'while)
+						(while-exp (parse-exp (2nd datum)) (map parse-exp (cddr datum)))]
 					[else (app-exp 
 						(parse-exp (1st datum))
 							(map parse-exp (cdr datum)))])]

@@ -69,6 +69,9 @@
 		(key expression?)
 		(tests (list-of (list-of expression?)))
 		(results (list-of expression?))]
+	[while-exp
+		(test expression?)
+		(bodies (list-of expression?))]
 	[app-exp
 		(rator expression?)
 		(rands (list-of expression?))])
