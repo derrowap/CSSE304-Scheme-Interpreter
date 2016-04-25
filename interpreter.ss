@@ -157,7 +157,23 @@
 						(syntax-expand (1st results))
 						(syntax-expand (case-exp key (cdr tests) (cdr results)))))]
 			[while-exp (test bodies)
-				(syntax-expand (parse-exp `(begin [define while-test (if (evaltest (void) (begin (bodies) while-test))] while-test)))]
+				;(syntax-expand (parse-exp `(begin [define while-test (if (evaltest (void) (begin (bodies) while-test))] while-test)))]
+				; Equivalent to:
+				;(lambda ()
+				;	(define while-test
+				;		(lambda ()
+				;			(if (test)
+				;				(begin
+				;					bodies
+				;					(while-test)))))
+				;	(while-test)))
+				(app-exp
+					(lambda-exp '()
+						(list (define-exp 'while-test
+							(lambda-exp '()
+								(list (if-exp (syntax-expand test)
+									(syntax-expand (begin-exp (append (map syntax-expand bodies) (list (app-exp (var-exp 'while-test) '())))))))))
+						(app-exp (var-exp 'while-test) '()))) '())]
 			[define-exp (name bind)
 				(define-exp name bind)]
 			[app-exp (rator rands)
