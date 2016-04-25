@@ -91,8 +91,13 @@
 				(lambda-improper-exp ids idlist (map syntax-expand body))]
 			[let-exp (ids values body)
 				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand values))]
-			;[let*-exp (ids values body)
-			; TODO: not yet implemented
+			[let*-exp (ids values body)
+				(app-exp (lambda-exp 
+							(list (car ids))
+							(if (null? (cdr ids))
+								(map syntax-expand body)
+								(list (syntax-expand (let*-exp (cdr ids) (cdr values) body)))))
+					(list (syntax-expand (car values))))]
 			;[letrec-exp (ids values body)
 			; TODO: not yet implemented
 			;[named-let-exp (name ids values body)
