@@ -62,8 +62,19 @@
 					(eval-exp elseRes env))]
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
-			;[set!-exp (id rvalue)
-			;	(set! id (eval-exp rvalue))]
+			;In class
+			[set!-exp (id exp)
+				(set-ref!
+					(apply-env-ref env id
+						identity-proc ; procedure to call if id is in the environment 
+						(lambda () 
+						   	(apply-env global-env
+						   		id
+						   		identity-proc
+						   		(lambda ()
+						   			(eopl:error 'apply-env ; procedure to call if id not in env
+						   				"variable not found in environment: ~s" id)))))
+					(eval-exp exp env))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -121,8 +132,8 @@
 					(syntax-expand elseRes))]
 			[begin-exp (body)
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
-			;[set!-exp (id rvalue)
-			;	(set!-exp id rvalue)]
+			[set!-exp (id exp)
+				(set!-exp id exp)]
 			[cond-exp (tests results)
 				(if (null? (cdr tests))
 					(if-exp
@@ -164,13 +175,13 @@
 							(append bodies
 									(list (app-exp (var-exp 'y) (list (var-exp 'y))))))
 							'()))))))]
-			; equivalent to:
-			;((lambda (x) (x x))
-			;	(lambda (y)
-			;		(if test
-			;			((lambda ()
-			;				bodies
-			;				(y y))))))
+				; equivalent to:
+				;((lambda (x) (x x))
+				;	(lambda (y)
+				;		(if test
+				;			((lambda ()
+				;				bodies
+				;				(y y))))))
 			[define-exp (name bind)
 				(define-exp name bind)]
 			[app-exp (rator rands)

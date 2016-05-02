@@ -1,5 +1,22 @@
 ; Adam Gastineau and Austin Derrow-Pinion
 
+
+;; Cell
+
+(define cell
+	(lambda (val)
+		(cons val 'cell)))
+
+(define cell-ref car)
+
+(define set-cell! set-car!)
+
+(define cell?
+	(lambda (obj)
+		(and
+			(pair? obj)
+			(eqv? (cdr obj) 'cell))))
+
 ;; Parsed expression datatypes
 
 (define is-literal?
@@ -57,7 +74,7 @@
 		(body (list-of expression?))]
 	[set!-exp
 		(id symbol?)
-		(rvalue expression?)]
+		(exp expression?)]
 	[cond-exp
 		(tests (list-of expression?))
 		(results (list-of (list-of expression?)))]
@@ -109,7 +126,7 @@
 	[empty-env-record]
 	[extended-env-record
 		(syms (list-of symbol?))
-		(vals (list-of scheme-value?))
+		(vals (list-of cell?))
 		(env environment?)])
 	
 ; datatype for procedures.  At first there is only one
