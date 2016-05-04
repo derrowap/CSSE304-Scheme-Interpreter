@@ -3,8 +3,8 @@
 ; top-level-eval evaluates a form in the global environment
 
 (define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < > >= <= cons car cdr caar cdar cadr cddr
-								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null?
-								assq eq? equal? atom? length list->vector list? pair? procedure?
+								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null? append list-tail
+								assq eq? eqv? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
 								symbol? set-car! set-cdr! vector-set! display newline
 								map apply quotient void call-with-values values))
@@ -51,8 +51,8 @@
 				(eopl:error 'eval-exp "let*-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[letrec-exp (ids values body)
 				(eopl:error 'eval-exp "letrec-exp should have been transformed by syntax-expand: ~a" exp)]
-			;[named-let-exp (name ids values body)
-			; TODO: not yet implemented
+			[named-let-exp (name ids values body)
+				(eopl:error 'eval-exp "name-let-exp should have been transformed by syntax-expand: ~a" exp)]
 			[if-exp (test result)
 				(if (eval-exp test env)
 					(eval-exp result env))]
@@ -152,10 +152,20 @@
 				;(let ((var #f) ...)
 				;	(let ((temp expr) ...)
 				;		(set! var temp) ...
-				;		(let () body1 body2 ...)))
-						
-			;[named-let-exp (name ids values body)
-			; TODO: not yet implemented
+				;		(let () body1 body2 ...)))	
+			[named-let-exp (name ids values body)
+				(syntax-expand
+					(app-exp
+						(letrec-exp
+							(list name)
+							(list (lambda-exp ids body))
+							(list (var-exp name)))
+						values))]
+				; Equivalent to EOPL
+				;((letrec ((name (lambda (var ...) body1 body2 ...)))
+				;		name)
+				;	expr ...)
+
 			[if-exp (test result)
 				(if-exp 
 					(syntax-expand test)
@@ -329,8 +339,11 @@
 			[(cddar) (cddar (1st args))]
 			[(list) args]
 			[(null?) (null? (1st args))]
+			[(append) (append (1st args) (2nd args))]
+			[(list-tail) (list-tail (1st args) (2nd args))]
 			[(assq) (assq (1st args) (2nd args))]
 			[(eq?) (eq? (1st args) (2nd args))]
+			[(eqv?) (eqv? (1st args) (2nd args))]
 			[(equal?) (equal? (1st args) (2nd args))]
 			[(atom?) (not (pair? (1st args)))]
 			[(length) (length (1st args))]
