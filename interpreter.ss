@@ -102,6 +102,18 @@
 	(lambda (key test)
 		(syntax-expand (or-exp (map (lambda (x) (app-exp (var-exp `equal?) (list key x))) test)))))
 
+(define build-temps
+	(lambda (values)
+		(map syntax->datum (generate-temporaries values))))
+
+(define make-set!-list
+	(lambda (ids values)
+		(if (null? ids)
+			'()
+			(cons
+				(set!-exp (car ids) (parse-exp (car values)))
+				(make-set!-list (cdr ids) (cdr values))))))
+
 (define syntax-expand
 	(lambda (exp)
 		(cases expression exp
@@ -122,8 +134,26 @@
 								(map syntax-expand body)
 								(list (syntax-expand (let*-exp (cdr ids) (cdr values) body)))))
 					(list (syntax-expand (car values))))]
-			;[letrec-exp (ids values body)
-			; TODO: not yet implemented
+			[letrec-exp (ids values body)
+				(syntax-expand
+					(let-exp
+						ids
+						(map (lambda (x) (lit-exp #f)) ids)
+						(list (let ([temps (build-temps values)])
+							(let-exp
+								temps
+								values
+								(list (begin-exp
+									(append
+										(make-set!-list ids temps)
+										(list (let-exp '() '() body))))))))))]
+
+				; Equivalent to EOPL
+				;(let ((var #f) ...)
+				;	(let ((temp expr) ...)
+				;		(set! var temp) ...
+				;		(let () body1 body2 ...)))
+						
 			;[named-let-exp (name ids values body)
 			; TODO: not yet implemented
 			[if-exp (test result)
@@ -138,7 +168,7 @@
 			[begin-exp (body)
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
 			[set!-exp (id exp)
-				(set!-exp id exp)]
+				(set!-exp id (syntax-expand exp))]
 			[cond-exp (tests results)
 				(if (null? (cdr tests))
 					(if-exp
@@ -265,7 +295,12 @@
 		(case prim-proc
 			; TODO: Add exception handler
 			[(+) (apply-procedure-to-all + (cdr args) (car args))]
-			[(-) (apply-procedure-to-all - (cdr args) (- (car args)))]
+			[(-) (apply-procedure-to-all
+					-
+					(cdr args)
+					(if (null? (cdr args))
+						(- (car args))
+						(car args)))]
 			[(*) (apply-procedure-to-all * (cdr args) (car args))]
 			[(/) (apply-procedure-to-all / (cdr args) (car args))]
 			[(add1) (+ (1st args) 1)]
