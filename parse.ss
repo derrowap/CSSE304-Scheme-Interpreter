@@ -151,6 +151,10 @@
 						(while-exp (parse-exp (2nd datum)) (map parse-exp (cddr datum)))]
 					[(eqv? (1st datum) 'define)
 						(define-exp (2nd datum) (parse-exp (3rd datum)))]
+					[(eqv? (1st datum) 'do1)
+						(do1-exp (map parse-exp (2nd datum)) (parse-exp (4th datum)))]
+					[(eqv? (1st datum) 'do2)
+						(do2-exp (map parse-exp (2nd datum)) (parse-exp (4th datum)))]
 					[else (app-exp 
 						(parse-exp (1st datum))
 							(map parse-exp (cdr datum)))])]

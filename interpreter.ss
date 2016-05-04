@@ -7,7 +7,7 @@
 								assq eq? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
 								symbol? set-car! set-cdr! vector-set! display newline
-								map apply quotient void ))
+								map apply quotient void call-with-values values))
 
 (define global-env
 	(extend-env
@@ -87,6 +87,11 @@
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (name bind)
 				(set! global-env (extend-env (list name) (list (eval-exp bind env)) global-env))]
+			[do2-exp (bodies test)
+				(begin
+					(eval-bodies bodies env)
+					(if (eval-exp test env)
+						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
@@ -184,6 +189,12 @@
 				;				(y y))))))
 			[define-exp (name bind)
 				(define-exp name bind)]
+			[do1-exp (bodies test)
+				(syntax-expand
+					(begin-exp
+						(append bodies (list (while-exp test bodies)))))]
+			[do2-exp (bodies test)
+				(do2-exp bodies test)]
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)
@@ -254,7 +265,7 @@
 		(case prim-proc
 			; TODO: Add exception handler
 			[(+) (apply-procedure-to-all + (cdr args) (car args))]
-			[(-) (apply-procedure-to-all - (cdr args) (car args))]
+			[(-) (apply-procedure-to-all - (cdr args) (- (car args)))]
 			[(*) (apply-procedure-to-all * (cdr args) (car args))]
 			[(/) (apply-procedure-to-all / (cdr args) (car args))]
 			[(add1) (+ (1st args) 1)]
@@ -308,6 +319,10 @@
 			[(apply) (apply-proc (1st args) (2nd args))]
 			[(quotient) (quotient (1st args) (2nd args))]
 			[(void) (void)]
+			[(call-with-values)
+				(apply-proc (2nd args) (apply-proc (1st args) '()))]
+			[(values) args]
+
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
 				prim-op)])))

@@ -92,6 +92,12 @@
 	[define-exp
 		(name symbol?)
 		(bind expression?)]
+	[do1-exp
+		(bodies (list-of expression?))
+		(test expression?)]
+	[do2-exp
+		(bodies (list-of expression?))
+		(test expression?)]
 	[app-exp
 		(rator expression?)
 		(rands (list-of expression?))])
