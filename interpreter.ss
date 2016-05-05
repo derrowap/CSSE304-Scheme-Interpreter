@@ -147,7 +147,6 @@
 									(append
 										(make-set!-list ids temps)
 										(list (let-exp '() '() body))))))))))]
-
 				; Equivalent to EOPL
 				;(let ((var #f) ...)
 				;	(let ((temp expr) ...)
@@ -287,32 +286,14 @@
 ; Usually an interpreter must define each 
 ; built-in procedure individually.  We are "cheating" a little bit.
 
-(define apply-procedure-to-all
-	(lambda (procedure args result)
-		(if (null? args)
-			result
-			(apply-procedure-to-all procedure (cdr args) (procedure result (car args))))))
-
-(define apply-map
-	(lambda (f args)
-		(if (null? (caar args))
-			'()
-			(append (map (lambda (x) (apply-proc f x)) (map (lambda (x) (map car x)) args)) 
-				(apply-map f (map (lambda (x) (map cdr x)) args))))))
-
 (define apply-prim-proc
 	(lambda (prim-proc args)
 		(case prim-proc
 			; TODO: Add exception handler
-			[(+) (apply-procedure-to-all + (cdr args) (car args))]
-			[(-) (apply-procedure-to-all
-					-
-					(cdr args)
-					(if (null? (cdr args))
-						(- (car args))
-						(car args)))]
-			[(*) (apply-procedure-to-all * (cdr args) (car args))]
-			[(/) (apply-procedure-to-all / (cdr args) (car args))]
+			[(+) (apply + args)]
+			[(-) (apply - args)]
+			[(*) (apply * args)]
+			[(/) (apply / args)]
 			[(add1) (+ (1st args) 1)]
 			[(sub1) (- (1st args) 1)]
 			[(zero?) (= (1st args) 0)]
@@ -363,14 +344,13 @@
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
 			[(newline) (newline)]
-			[(map) (apply-map (1st args) (list (cdr args)))]
+			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
 			[(apply) (apply-proc (1st args) (2nd args))]
 			[(quotient) (quotient (1st args) (2nd args))]
 			[(void) (void)]
 			[(call-with-values)
 				(apply-proc (2nd args) (apply-proc (1st args) '()))]
 			[(values) args]
-
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
 				prim-op)])))
