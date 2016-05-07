@@ -203,12 +203,25 @@
 						(syntax-expand (and-exp (cdr bodies)))
 						(lit-exp #f)))]
 			[or-exp (bodies)
-				(if-else-exp
-					(syntax-expand (car bodies))
-					(syntax-expand (car bodies))
-					(if (null? (cdr bodies))
-						(lit-exp #f)
-						(syntax-expand (or-exp (cdr bodies)))))]
+				(app-exp
+					(lambda-exp 
+						(list 'if-else-test)
+						(list
+							(if-else-exp
+								(var-exp 'if-else-test)
+								(var-exp 'if-else-test)
+								(if (null? (cdr bodies))
+									(lit-exp #f)
+									(syntax-expand (or-exp (cdr bodies)))))))
+					(list (syntax-expand (car bodies))))]
+				; Equivalent to:
+				; (let ((test (1st bodies)))
+				;	(if test
+				;		test
+				;		(let ((test (2nd bodies)))
+				; 			(if test
+				;				test
+				;				...))))
 			[case-exp (key tests results)
 				(if (null? (cdr tests))
 					(if-exp (case-or-expression key (1st tests))
