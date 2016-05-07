@@ -90,8 +90,8 @@
 		(test expression?)
 		(bodies (list-of expression?))]
 	[define-exp
-		(name symbol?)
-		(bind expression?)]
+		(id symbol?)
+		(exp expression?)]
 	[do1-exp
 		(bodies (list-of expression?))
 		(test expression?)]

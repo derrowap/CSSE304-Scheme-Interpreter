@@ -15,6 +15,14 @@
 		(map prim-proc *prim-proc-names*)
 		(empty-env)))
 
+(define reset-global-env
+	(lambda () 
+		(set! global-env 
+			(extend-env 
+				*prim-proc-names*
+				(map prim-proc *prim-proc-names*)
+				(empty-env)))))
+
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
@@ -85,8 +93,8 @@
 				(eopl:error 'eval-exp "case-exp should have been transformed by syntax-expand: ~a" exp)]
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
-			[define-exp (name bind)
-				(set! global-env (extend-env (list name) (list (eval-exp bind env)) global-env))]
+			[define-exp (id exp)
+				(set! global-env (extend-env (list id) (list (eval-exp exp env)) global-env))]
 			[do2-exp (bodies test)
 				(begin
 					(eval-bodies bodies env)
@@ -226,8 +234,8 @@
 				;			((lambda ()
 				;				bodies
 				;				(y y))))))
-			[define-exp (name bind)
-				(define-exp name bind)]
+			[define-exp (id exp)
+				(define-exp id (syntax-expand exp))]
 			[do1-exp (bodies test)
 				(syntax-expand
 					(begin-exp
