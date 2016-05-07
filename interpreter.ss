@@ -9,24 +9,23 @@
 								symbol? set-car! set-cdr! vector-set! display newline
 								map apply quotient void call-with-values values))
 
-(define global-env
-	(extend-env
+(define make-init-env
+	(lambda ()
+		(extend-env
 		*prim-proc-names*
 		(map prim-proc *prim-proc-names*)
-		(empty-env)))
+		(empty-env))))
+
+(define global-env (make-init-env))
 
 (define reset-global-env
 	(lambda () 
-		(set! global-env 
-			(extend-env 
-				*prim-proc-names*
-				(map prim-proc *prim-proc-names*)
-				(empty-env)))))
+		(set! global-env (make-init-env))))
 
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
-		(eval-exp form global-env)))
+		(eval-exp form (empty-env))))
 
 ; eval-exp is the main component of the interpreter
 
@@ -41,8 +40,7 @@
 				(apply-env env id; look up its value.
 					identity-proc ; procedure to call if id is in the environment 
 					(lambda () 
-					   	(apply-env global-env
-					   		id
+					   	(apply-env-ref global-env id
 					   		identity-proc
 					   		(lambda ()
 					   			(eopl:error 'apply-env ; procedure to call if id not in env
@@ -76,11 +74,10 @@
 					(apply-env-ref env id
 						identity-proc ; procedure to call if id is in the environment 
 						(lambda () 
-						   	(apply-env global-env
-						   		id
+						   	(apply-env-ref global-env id
 						   		identity-proc
 						   		(lambda ()
-						   			(eopl:error 'apply-env ; procedure to call if id not in env
+						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 						   				"variable not found in environment: ~s" id)))))
 					(eval-exp exp env))]
 			[cond-exp (tests results)
@@ -252,9 +249,7 @@
 
 (define eval-rands
 	(lambda (rands env)
-		(map (lambda (x)
-				(eval-exp x env))
-			rands)))
+		(map (lambda (x) (eval-exp x env)) rands)))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
