@@ -25,7 +25,7 @@
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
-		(eval-exp form (empty-env))))
+		(eval-exp form (empty-env) (empty-env))))
 
 ; eval-exp is the main component of the interpreter
 
@@ -33,7 +33,7 @@
 	(lambda (x) x))
 
 (define eval-exp
-	(lambda (exp env)
+	(lambda (exp env ref-env)
 		(cases expression exp
 			[lit-exp (datum) datum]
 			[var-exp (id)
@@ -60,12 +60,12 @@
 			[named-let-exp (name ids values body)
 				(eopl:error 'eval-exp "name-let-exp should have been transformed by syntax-expand: ~a" exp)]
 			[if-exp (test result)
-				(if (eval-exp test env)
-					(eval-exp result env))]
+				(if (eval-exp test env ref-env)
+					(eval-exp result env ref-env))]
 			[if-else-exp (test result elseRes)
-				(if (eval-exp test env)
-					(eval-exp result env)
-					(eval-exp elseRes env))]
+				(if (eval-exp test env ref-env)
+					(eval-exp result env ref-env)
+					(eval-exp elseRes env ref-env))]
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;In class
@@ -79,7 +79,7 @@
 						   		(lambda ()
 						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 						   				"variable not found in environment: ~s" id)))))
-					(eval-exp exp env))]
+					(eval-exp exp env ref-env))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -91,16 +91,16 @@
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (id exp)
-				(set! global-env (extend-env (list id) (list (eval-exp exp env)) global-env))]
+				(set! global-env (extend-env (list id) (list (eval-exp exp env ref-env)) global-env))]
 			[do2-exp (bodies test)
 				(begin
-					(eval-bodies bodies env)
-					(if (eval-exp test env)
-						(eval-exp (do2-exp bodies test) env)))]
+					(eval-bodies bodies env ref-env)
+					(if (eval-exp test env ref-env)
+						(eval-exp (do2-exp bodies test) env ref-env)))]
 			[app-exp (rator rands)
-				(let ([proc-value (eval-exp rator env)]
-						[args (eval-rands rands env)])
-					(apply-proc proc-value args))]
+				(let ([proc-value (eval-exp rator env ref-env)]
+						[args (eval-rands rands env ref-env)])
+					(apply-proc proc-value args env))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 (define case-or-expression
@@ -261,16 +261,16 @@
 ; evaluate the list of operands, putting results into a list
 
 (define eval-rands
-	(lambda (rands env)
-		(map (lambda (x) (eval-exp x env)) rands)))
+	(lambda (rands env ref-env)
+		(map (lambda (x) (eval-exp x env ref-env)) rands)))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
-	(lambda (bodies env)
+	(lambda (bodies env ref-env)
 		(let loop ([bodies bodies])
 			(if (null? (cdr bodies))
-				(eval-exp (car bodies) env)
-				(begin (eval-exp (car bodies) env) (loop (cdr bodies)))))))
+				(eval-exp (car bodies) env ref-env)
+				(begin (eval-exp (car bodies) env ref-env) (loop (cdr bodies)))))))
 
 
 (define extract-extra-args-closure-improper
@@ -284,16 +284,17 @@
 ;  User-defined procedures will be added later.
 
 (define apply-proc
-	(lambda (proc-value args)
+	(lambda (proc-value args ref-env)
 		(cases proc-val proc-value
 			[prim-proc (op)
-				(apply-prim-proc op args)]
+				(apply-prim-proc op args ref-env)]
 			[closure (params bodies env)
-				(eval-bodies bodies (extend-env params args env))]
+				; TODO: Handle ref-env
+				(eval-bodies bodies (extend-env params args env) ref-env)]
 			[closure-list (listsymbol bodies env)
-				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
+				(eval-bodies bodies (extend-env (list listsymbol) (list args) env) ref-env)]
 			[closure-improper (params listsymbol bodies env)
-				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env))]
+				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env) ref-env)]
 			; You will add other cases
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
@@ -303,7 +304,7 @@
 ; built-in procedure individually.  We are "cheating" a little bit.
 
 (define apply-prim-proc
-	(lambda (prim-proc args)
+	(lambda (prim-proc args ref-env)
 		(case prim-proc
 			; TODO: Add exception handler
 			[(+) (apply + args)]
@@ -360,12 +361,12 @@
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
 			[(newline) (newline)]
-			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
-			[(apply) (apply-proc (1st args) (2nd args))]
+			[(map) (map (lambda (x) (apply-proc (car args) (list x) ref-env)) (cadr args))]
+			[(apply) (apply-proc (1st args) (2nd args) ref-env)]
 			[(quotient) (quotient (1st args) (2nd args))]
 			[(void) (void)]
 			[(call-with-values)
-				(apply-proc (2nd args) (apply-proc (1st args) '()))]
+				(apply-proc (2nd args) (apply-proc (1st args) '() ref-env) ref-env)]
 			[(values) args]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
