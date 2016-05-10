@@ -10,12 +10,29 @@
 (define 3rd caddr)
 (define 4th cadddr)
 
+(define parse-lambda-args
+	(lambda (datum)
+		(cond
+			[(null? datum)
+				'()]
+			[(symbol? (car datum))
+				(cons (car datum) (parse-lambda-args (cdr datum)))]
+			[else
+				(cons (ref-exp (cadar datum)) (parse-lambda-args (cdr datum)))])))
+
+(define lambda-args?
+	(lambda (x)
+		(or (symbol? x)
+			(and (pair? x) (eqv? (car x) 'ref)))))
+
 (define parse-exp         
 	(lambda (datum)
 		(cond
 			[(symbol? datum) (var-exp datum)]
 			[(list? datum)
 				(cond
+					[(eqv? (1st datum) 'ref)
+						(ref-exp (2nd datum))]
 					[(eqv? (1st datum) 'quote)
 						(lit-exp (2nd datum))]
 					[(eqv? (1st datum) 'lambda)
@@ -27,10 +44,10 @@
 										(2nd datum)
 										(map parse-exp (cddr datum)))]
 								[(list? (2nd datum))
-									(if (andmap symbol? (2nd datum))
-										(lambda-exp (2nd datum)
+									(if (andmap lambda-args? (2nd datum))
+										(lambda-exp (parse-lambda-args (2nd datum))
 											(map parse-exp (cddr datum)))
-										(eopl:error 'parse-exp "lambda-exp: formal arguments must be symbols: ~s" datum))]
+										(eopl:error 'parse-exp "lambda-exp: formal arguments must be symbols or refs: ~s" datum))]
 								[else (let ([improper (improper-lambda-helper (2nd datum))])
 									(lambda-improper-exp
 										(car improper)
