@@ -37,13 +37,30 @@
 		(cases expression exp
 			[lit-exp (datum) datum]
 			[var-exp (id)
-				(apply-env env id; look up its value.
-					identity-proc ; procedure to call if id is in the environment 
+				(apply-env env id
+					(lambda (x)
+						(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+							(apply-env-ref env (cadar x)
+								identity-proc
+								(lambda () 
+								   	(apply-env-ref global-env (cadar x)
+								   		identity-proc
+								   		(lambda ()
+								   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+								   				"variable not found in environment: ~s" (cadar x))))))
+							x))
 					(lambda () 
 					   	(apply-env-ref global-env id
-					   		identity-proc
+					   		(lambda (x)
+								(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+									(apply-env-ref global-env (cadar x)
+										identity-proc
+									   		(lambda ()
+									   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+									   				"variable not found in environment: ~s" (cadar x))))
+									x))
 					   		(lambda ()
-					   			(eopl:error 'apply-env ; procedure to call if id not in env
+					   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 					   				"variable not found in environment: ~s" id)))))]
 			[lambda-exp (ids body)
 				(closure ids body env)]
@@ -74,7 +91,6 @@
 					(apply-env-ref env id
 						(lambda (x)
 							(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
-								(begin (pretty-print env)
 								(apply-env-ref env (cadar x)
 									identity-proc
 									(lambda () 
@@ -82,8 +98,8 @@
 									   		identity-proc
 									   		(lambda ()
 									   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-									   				"variable not found in environment: ~s" (cadar x)))))))
-								identity-proc))
+									   				"variable not found in environment: ~s" (cadar x))))))
+								x))
 						(lambda () 
 						   	(apply-env-ref global-env id
 						   		(lambda (x)
@@ -93,7 +109,7 @@
 										   		(lambda ()
 										   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 										   				"variable not found in environment: ~s" (cadar x))))
-										identity-proc))
+										x))
 						   		(lambda ()
 						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 						   				"variable not found in environment: ~s" id)))))
@@ -132,7 +148,7 @@
 									(eval-rands-reference rands env params)]
 								[else
 									(eval-rands rands env)])])
-					(apply-proc proc-value args))]
+					(apply-proc proc-value args env))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 (define case-or-expression
@@ -326,13 +342,13 @@
 ;  User-defined procedures will be added later.
 
 (define apply-proc
-	(lambda (proc-value args)
+	(lambda (proc-value args env-parent)
 		(cases proc-val proc-value
 			[prim-proc (op)
 				(apply-prim-proc op args)]
 			[closure (params bodies env)
-				(begin (pretty-print (extend-env params args env))
-				(eval-bodies bodies (extend-env params args env)))]
+				;(begin (pretty-print (extend-env params args env))
+				(eval-bodies bodies (extend-env params args env-parent))]
 			[closure-list (listsymbol bodies env)
 				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
 			[closure-improper (params listsymbol bodies env)
