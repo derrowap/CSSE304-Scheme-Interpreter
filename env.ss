@@ -28,10 +28,10 @@
 			[(null? ls) #f]
 			[(pred (car ls)) 0]
 			; TODO: Handles ref-exp as if it was a normal symbol
-			[(and
-				(pair? (car ls))
-				(pred (cadar ls)))
-				0]
+			;[(and
+			;	(pair? (car ls))
+			;	(pred (cadar ls)))
+			;	0]
 			[else (let ([list-index-r (list-index pred (cdr ls))])
 				(if (number? list-index-r)
 					(+ 1 list-index-r)

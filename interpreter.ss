@@ -70,16 +70,17 @@
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;In class
 			[set!-exp (id exp)
-				(set-ref!
-					(apply-env-ref env id
-						identity-proc ; procedure to call if id is in the environment 
-						(lambda () 
-						   	(apply-env-ref global-env id
-						   		identity-proc
-						   		(lambda ()
-						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-						   				"variable not found in environment: ~s" id)))))
-					(eval-exp exp env))]
+				(pretty-print id)]
+				;(set-ref!
+				;	(apply-env-ref env id
+				;		identity-proc ; procedure to call if id is in the environment 
+				;		(lambda () 
+				;		   	(apply-env-ref global-env id
+				;		   		identity-proc
+				;		   		(lambda ()
+				;		   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+				;		   				"variable not found in environment: ~s" id)))))
+				;	(eval-exp exp env))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -98,8 +99,8 @@
 					(if (eval-exp test env)
 						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
-				(let ([proc-value (eval-exp rator env)]
-						[args (eval-rands rands env)])
+				(let* ([proc-value (eval-exp rator env)]
+						[args (eval-rands rands env (cadr proc-value))])
 					(apply-proc proc-value args))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
@@ -261,8 +262,12 @@
 ; evaluate the list of operands, putting results into a list
 
 (define eval-rands
-	(lambda (rands env)
-		(map (lambda (x) (eval-exp x env)) rands)))
+	(lambda (rands env params)
+		(map 
+			(lambda (x p) 
+				(if (pair? p)
+					(ref-exp (cadr x))
+					(eval-exp x env))) rands params)))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
