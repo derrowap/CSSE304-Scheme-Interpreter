@@ -29,22 +29,13 @@
 			(null? x)
 			(pair? x))))
 
-(define is-lambda-arg?
-	(lambda (x)
-		(or (symbol? x)
-			(cases expression x
-				[ref-exp (id) #t]
-				[else #f]))))
-
 (define-datatype expression expression?
 	[lit-exp
 		(id is-literal?)]
 	[var-exp
 		(id symbol?)]
-	[ref-exp
-		(id symbol?)]
 	[lambda-exp
-		(ids (list-of is-lambda-arg?))
+		(ids (list-of symbol?))
 		(body (list-of expression?))]
 	[lambda-list-exp
 		(idlist symbol?)
@@ -140,7 +131,7 @@
 (define-datatype environment environment?
 	[empty-env-record]
 	[extended-env-record
-		(syms (list-of is-lambda-arg?))
+		(syms (list-of symbol?))
 		(vals (list-of cell?))
 		(env environment?)])
 	
@@ -151,7 +142,7 @@
 	[prim-proc
 		(name symbol?)]
 	[closure
-		(params (list-of is-lambda-arg?))
+		(params (list-of symbol?))
 		(bodies (list-of expression?))
 		(env environment?)]
 	[closure-list
