@@ -144,7 +144,7 @@
 			[app-exp (rator rands)
 				(let* ([proc-value (eval-exp rator env)]
 						[args (cases proc-val proc-value
-								[closure (params bodies env)
+								[closure (params bodies closure-env)
 									(eval-rands-reference rands env params)]
 								[else
 									(eval-rands rands env)])])
