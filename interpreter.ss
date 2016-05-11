@@ -70,7 +70,34 @@
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;In class
 			[set!-exp (id exp)
-				(pretty-print id)]
+				(set-ref!
+					(apply-env-ref env id
+						(lambda (x)
+							(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+								(begin (pretty-print env)
+								(apply-env-ref env (cadar x)
+									identity-proc
+									(lambda () 
+									   	(apply-env-ref global-env (cadar x)
+									   		identity-proc
+									   		(lambda ()
+									   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+									   				"variable not found in environment: ~s" (cadar x)))))))
+								identity-proc))
+						(lambda () 
+						   	(apply-env-ref global-env id
+						   		(lambda (x)
+									(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+										(apply-env-ref global-env (cadar x)
+											identity-proc
+										   		(lambda ()
+										   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+										   				"variable not found in environment: ~s" (cadar x))))
+										identity-proc))
+						   		(lambda ()
+						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+						   				"variable not found in environment: ~s" id)))))
+					(eval-exp exp env))]
 				;(set-ref!
 				;	(apply-env-ref env id
 				;		identity-proc ; procedure to call if id is in the environment 
@@ -100,7 +127,11 @@
 						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
 				(let* ([proc-value (eval-exp rator env)]
-						[args (eval-rands rands env (cadr proc-value))])
+						[args (cases proc-val proc-value
+								[closure (params bodies env)
+									(eval-rands-reference rands env params)]
+								[else
+									(eval-rands rands env)])])
 					(apply-proc proc-value args))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
@@ -262,6 +293,12 @@
 ; evaluate the list of operands, putting results into a list
 
 (define eval-rands
+	(lambda (rands env)
+		(map 
+			(lambda (x) 
+				(eval-exp x env)) rands)))
+
+(define eval-rands-reference
 	(lambda (rands env params)
 		(map 
 			(lambda (x p) 
@@ -294,7 +331,8 @@
 			[prim-proc (op)
 				(apply-prim-proc op args)]
 			[closure (params bodies env)
-				(eval-bodies bodies (extend-env params args env))]
+				(begin (pretty-print (extend-env params args env))
+				(eval-bodies bodies (extend-env params args env)))]
 			[closure-list (listsymbol bodies env)
 				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
 			[closure-improper (params listsymbol bodies env)
