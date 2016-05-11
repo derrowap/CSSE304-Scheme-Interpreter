@@ -16,7 +16,13 @@
 
 (define extend-env
 	(lambda (syms vals env)
-		(extended-env-record syms (map cell vals) env)))
+		(extended-env-record syms
+			(map 
+				(lambda (v s) 
+					(if (symbol? s)
+						(cell v)
+						(cell (cons 'reference v)))) vals syms) env)))
+
 
 (define list-find-position
 	(lambda (sym los)
@@ -31,7 +37,7 @@
 			[(and
 				(pair? (car ls))
 				(pred (cadar ls)))
-				0]
+				(cadar ls)]
 			[else (let ([list-index-r (list-index pred (cdr ls))])
 				(if (number? list-index-r)
 					(+ 1 list-index-r)
@@ -44,9 +50,12 @@
 				(fail)]
 			[extended-env-record (syms vals env)
 				(let ((pos (list-find-position sym syms)))
-					(if (number? pos)
-						(succeed (list-ref vals pos))
-						(apply-env-ref env sym succeed fail)))])))
+					(cond
+						[(number? pos)
+							(succeed (list-ref vals pos))]
+						[(symbol? pos)
+							(apply-env-ref env pos succeed fail)]
+						[else (apply-env-ref env sym succeed fail)]))])))
 
 (define apply-env
 	(lambda (env sym succeed fail)
