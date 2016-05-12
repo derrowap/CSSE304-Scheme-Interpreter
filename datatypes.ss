@@ -33,13 +33,20 @@
 	(lambda (x)
 		(or (symbol? x)
 			(cases expression x
-				[ref-exp (id) #t]
+				[ref-dec-exp (id) #t]
 				[else #f]))))
+
+
+(define is-ref-exp?
+	(lambda (x)
+		(and (pair? (car x)) (eqv? (caar x) 'ref-exp))))
 
 (define-datatype expression expression?
 	[lit-exp
 		(id is-literal?)]
 	[var-exp
+		(id symbol?)]
+	[ref-dec-exp
 		(id symbol?)]
 	[ref-exp
 		(id symbol?)]

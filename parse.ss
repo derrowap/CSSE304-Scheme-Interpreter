@@ -18,7 +18,7 @@
 			[(symbol? (car datum))
 				(cons (car datum) (parse-lambda-args (cdr datum)))]
 			[else
-				(cons (ref-exp (cadar datum)) (parse-lambda-args (cdr datum)))])))
+				(cons (ref-dec-exp (cadar datum)) (parse-lambda-args (cdr datum)))])))
 
 (define lambda-args?
 	(lambda (x)
@@ -31,8 +31,6 @@
 			[(symbol? datum) (var-exp datum)]
 			[(list? datum)
 				(cond
-					[(eqv? (1st datum) 'ref)
-						(ref-exp (2nd datum))]
 					[(eqv? (1st datum) 'quote)
 						(lit-exp (2nd datum))]
 					[(eqv? (1st datum) 'lambda)

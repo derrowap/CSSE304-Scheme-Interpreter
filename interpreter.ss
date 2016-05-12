@@ -6,7 +6,7 @@
 								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null? append list-tail
 								assq eq? eqv? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
-								symbol? set-car! set-cdr! vector-set! display newline
+								symbol? set-car! set-cdr! vector-set! display pretty-print newline
 								map apply quotient void call-with-values values))
 
 (define make-init-env
@@ -29,9 +29,6 @@
 
 ; eval-exp is the main component of the interpreter
 
-(define identity-proc
-	(lambda (x) x))
-
 (define eval-exp
 	(lambda (exp env)
 		(cases expression exp
@@ -39,25 +36,21 @@
 			[var-exp (id)
 				(apply-env env id
 					(lambda (x)
-						(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+						(if (is-ref-exp? x)
 							(apply-env-ref env (cadar x)
-								identity-proc
-								(lambda () 
-								   	(apply-env-ref global-env (cadar x)
-								   		identity-proc
-								   		(lambda ()
-								   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-								   				"variable not found in environment: ~s" (cadar x))))))
+								(lambda (y)
+									(if (is-ref-exp? y)
+										(apply-env-ref env (cadar y)
+											identity-proc
+											(lambda () (global-lookup y)))
+										y))
+								(lambda () (global-lookup x)))
 							x))
 					(lambda () 
 					   	(apply-env-ref global-env id
 					   		(lambda (x)
 								(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
-									(apply-env-ref global-env (cadar x)
-										identity-proc
-									   		(lambda ()
-									   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-									   				"variable not found in environment: ~s" (cadar x))))
+									(global-lookup x)
 									x))
 					   		(lambda ()
 					   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
@@ -90,25 +83,20 @@
 				(set-ref!
 					(apply-env-ref env id
 						(lambda (x)
-							(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
+							(if (is-ref-exp? x)
 								(apply-env-ref env (cadar x)
-									identity-proc
-									(lambda () 
-									   	(apply-env-ref global-env (cadar x)
-									   		identity-proc
-									   		(lambda ()
-									   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-									   				"variable not found in environment: ~s" (cadar x))))))
+									(lambda (y)
+										(if (is-ref-exp? y)
+											(global-lookup (cadar y))
+											y))
+									(lambda ()
+										(global-lookup x)))
 								x))
 						(lambda () 
 						   	(apply-env-ref global-env id
 						   		(lambda (x)
-									(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
-										(apply-env-ref global-env (cadar x)
-											identity-proc
-										   		(lambda ()
-										   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-										   				"variable not found in environment: ~s" (cadar x))))
+									(if (is-ref-exp? x)
+										(global-lookup x)
 										x))
 						   		(lambda ()
 						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
@@ -418,6 +406,7 @@
 			[(set-cdr!) (set-cdr! (1st args) (2nd args))]
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
+			[(pretty-print) (pretty-print (1st args))]
 			[(newline) (newline)]
 			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
 			[(apply) (apply-proc (1st args) (2nd args))]

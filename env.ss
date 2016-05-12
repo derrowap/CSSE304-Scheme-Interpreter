@@ -51,3 +51,14 @@
 (define apply-env
 	(lambda (env sym succeed fail)
 		(deref (apply-env-ref env sym succeed fail))))
+
+(define identity-proc
+	(lambda (x) x))
+
+(define global-lookup
+	(lambda (x) 
+	   	(apply-env-ref global-env x
+	   		identity-proc
+	   		(lambda ()
+	   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+	   				"variable not found in environment: ~s" x)))))
