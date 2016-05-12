@@ -333,10 +333,12 @@
 	(lambda (proc-value args env-parent)
 		(cases proc-val proc-value
 			[prim-proc (op)
-				(apply-prim-proc op args)]
+				(apply-prim-proc op args env-parent)]
 			[closure (params bodies env)
 				;(begin (pretty-print (extend-env params args env))
-				(eval-bodies bodies (extend-env params args env-parent))]
+				(if (ormap (lambda (x) (and (pair? x) (eqv? (car x) 'ref-dec-exp))) params)
+					(eval-bodies bodies (extend-env params args env-parent))
+					(eval-bodies bodies (extend-env params args env)))]
 			[closure-list (listsymbol bodies env)
 				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
 			[closure-improper (params listsymbol bodies env)
@@ -350,7 +352,7 @@
 ; built-in procedure individually.  We are "cheating" a little bit.
 
 (define apply-prim-proc
-	(lambda (prim-proc args)
+	(lambda (prim-proc args env-parent)
 		(case prim-proc
 			; TODO: Add exception handler
 			[(+) (apply + args)]
@@ -408,12 +410,12 @@
 			[(display) (display (1st args))]
 			[(pretty-print) (pretty-print (1st args))]
 			[(newline) (newline)]
-			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
-			[(apply) (apply-proc (1st args) (2nd args))]
+			[(map) (map (lambda (x) (apply-proc (car args) (list x) env-parent)) (cadr args))]
+			[(apply) (apply-proc (1st args) (2nd args) env-parent)]
 			[(quotient) (quotient (1st args) (2nd args))]
 			[(void) (void)]
 			[(call-with-values)
-				(apply-proc (2nd args) (apply-proc (1st args) '()))]
+				(apply-proc (2nd args) (apply-proc (1st args) '() env-parent) env-parent)]
 			[(values) args]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 
