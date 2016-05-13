@@ -6,7 +6,7 @@
 								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null? append list-tail
 								assq eq? eqv? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
-								symbol? set-car! set-cdr! vector-set! display pretty-print newline
+								symbol? set-car! set-cdr! vector-set! display newline
 								map apply quotient void call-with-values values))
 
 (define make-init-env
@@ -29,31 +29,21 @@
 
 ; eval-exp is the main component of the interpreter
 
+(define identity-proc
+	(lambda (x) x))
+
 (define eval-exp
 	(lambda (exp env)
 		(cases expression exp
 			[lit-exp (datum) datum]
 			[var-exp (id)
-				(apply-env env id
-					(lambda (x)
-						(if (is-ref-exp? x)
-							(apply-env-ref env (cadar x)
-								(lambda (y)
-									(if (is-ref-exp? y)
-										(apply-env-ref env (cadar y)
-											identity-proc
-											(lambda () (global-lookup y)))
-										y))
-								(lambda () (global-lookup x)))
-							x))
+				(apply-env env id; look up its value.
+					identity-proc ; procedure to call if id is in the environment 
 					(lambda () 
 					   	(apply-env-ref global-env id
-					   		(lambda (x)
-								(if (and (pair? (car x)) (eqv? (caar x) 'ref-exp))
-									(global-lookup x)
-									x))
+					   		identity-proc
 					   		(lambda ()
-					   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+					   			(eopl:error 'apply-env ; procedure to call if id not in env
 					   				"variable not found in environment: ~s" id)))))]
 			[lambda-exp (ids body)
 				(closure ids body env)]
@@ -82,36 +72,14 @@
 			[set!-exp (id exp)
 				(set-ref!
 					(apply-env-ref env id
-						(lambda (x)
-							(if (is-ref-exp? x)
-								(apply-env-ref env (cadar x)
-									(lambda (y)
-										(if (is-ref-exp? y)
-											(global-lookup (cadar y))
-											y))
-									(lambda ()
-										(global-lookup x)))
-								x))
+						identity-proc ; procedure to call if id is in the environment 
 						(lambda () 
 						   	(apply-env-ref global-env id
-						   		(lambda (x)
-									(if (is-ref-exp? x)
-										(global-lookup x)
-										x))
+						   		identity-proc
 						   		(lambda ()
 						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 						   				"variable not found in environment: ~s" id)))))
 					(eval-exp exp env))]
-				;(set-ref!
-				;	(apply-env-ref env id
-				;		identity-proc ; procedure to call if id is in the environment 
-				;		(lambda () 
-				;		   	(apply-env-ref global-env id
-				;		   		identity-proc
-				;		   		(lambda ()
-				;		   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-				;		   				"variable not found in environment: ~s" id)))))
-				;	(eval-exp exp env))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -130,13 +98,9 @@
 					(if (eval-exp test env)
 						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
-				(let* ([proc-value (eval-exp rator env)]
-						[args (cases proc-val proc-value
-								[closure (params bodies closure-env)
-									(eval-rands-reference rands env params)]
-								[else
-									(eval-rands rands env)])])
-					(apply-proc proc-value args env))]
+				(let ([proc-value (eval-exp rator env)]
+						[args (eval-rands rands env)])
+					(apply-proc proc-value args))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 (define case-or-expression
@@ -298,17 +262,7 @@
 
 (define eval-rands
 	(lambda (rands env)
-		(map 
-			(lambda (x) 
-				(eval-exp x env)) rands)))
-
-(define eval-rands-reference
-	(lambda (rands env params)
-		(map 
-			(lambda (x p) 
-				(if (pair? p)
-					(ref-exp (cadr x))
-					(eval-exp x env))) rands params)))
+		(map (lambda (x) (eval-exp x env)) rands)))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
@@ -330,15 +284,12 @@
 ;  User-defined procedures will be added later.
 
 (define apply-proc
-	(lambda (proc-value args env-parent)
+	(lambda (proc-value args)
 		(cases proc-val proc-value
 			[prim-proc (op)
-				(apply-prim-proc op args env-parent)]
+				(apply-prim-proc op args)]
 			[closure (params bodies env)
-				;(begin (pretty-print (extend-env params args env))
-				(if (ormap (lambda (x) (and (pair? x) (eqv? (car x) 'ref-dec-exp))) params)
-					(eval-bodies bodies (extend-env params args env-parent))
-					(eval-bodies bodies (extend-env params args env)))]
+				(eval-bodies bodies (extend-env params args env))]
 			[closure-list (listsymbol bodies env)
 				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
 			[closure-improper (params listsymbol bodies env)
@@ -352,7 +303,7 @@
 ; built-in procedure individually.  We are "cheating" a little bit.
 
 (define apply-prim-proc
-	(lambda (prim-proc args env-parent)
+	(lambda (prim-proc args)
 		(case prim-proc
 			; TODO: Add exception handler
 			[(+) (apply + args)]
@@ -408,14 +359,13 @@
 			[(set-cdr!) (set-cdr! (1st args) (2nd args))]
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
-			[(pretty-print) (pretty-print (1st args))]
 			[(newline) (newline)]
-			[(map) (map (lambda (x) (apply-proc (car args) (list x) env-parent)) (cadr args))]
-			[(apply) (apply-proc (1st args) (2nd args) env-parent)]
+			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
+			[(apply) (apply-proc (1st args) (2nd args))]
 			[(quotient) (quotient (1st args) (2nd args))]
 			[(void) (void)]
 			[(call-with-values)
-				(apply-proc (2nd args) (apply-proc (1st args) '() env-parent) env-parent)]
+				(apply-proc (2nd args) (apply-proc (1st args) '()))]
 			[(values) args]
 			[else (error 'apply-prim-proc 
 				"Bad primitive procedure name: ~s" 

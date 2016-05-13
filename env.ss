@@ -27,11 +27,6 @@
 		(cond
 			[(null? ls) #f]
 			[(pred (car ls)) 0]
-			; TODO: Handles ref-exp as if it was a normal symbol
-			[(and
-				(pair? (car ls))
-				(pred (cadar ls)))
-				0]
 			[else (let ([list-index-r (list-index pred (cdr ls))])
 				(if (number? list-index-r)
 					(+ 1 list-index-r)
@@ -51,14 +46,3 @@
 (define apply-env
 	(lambda (env sym succeed fail)
 		(deref (apply-env-ref env sym succeed fail))))
-
-(define identity-proc
-	(lambda (x) x))
-
-(define global-lookup
-	(lambda (x) 
-	   	(apply-env-ref global-env x
-	   		identity-proc
-	   		(lambda ()
-	   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-	   				"variable not found in environment: ~s" x)))))
