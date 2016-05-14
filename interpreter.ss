@@ -275,8 +275,7 @@
 
 (define eval-rands
 	(lambda (rands env k)
-		; TODO: Convert to map-cps
-		(apply-k k (map (lambda (x) (eval-exp x env (init-k))) rands))))
+		(map-cps (lambda (x k) (eval-exp x env k)) rands k)))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies

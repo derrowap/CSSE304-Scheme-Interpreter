@@ -15,6 +15,13 @@
 		(result expression?)
 		(elseRes expression?)
 		(env environment?)
+		(k continuation?)]
+	[map-recur-k
+		(proc-cps procedure?)
+		(list-car scheme-value?)
+		(k continuation?)]
+	[map-apply-k
+		(ls list?)
 		(k continuation?)])
 
 (define apply-k
@@ -32,4 +39,17 @@
 			[if-else-k (result elseRes env k)
 				(if v
 					(eval-exp result env k)
-					(eval-exp elseRes env k))])))
+					(eval-exp elseRes env k))]
+			[map-recur-k (proc-cps list-car k)
+				(proc-cps list-car (map-apply-k v k))]
+			[map-apply-k (ls k)
+				(apply-k k (cons v ls))])))
+
+(define map-cps
+	(lambda (proc-cps ls k)
+		(if (null? ls)
+			(apply-k k '())
+			(map-cps
+				proc-cps
+				(cdr ls)
+				(map-recur-k proc-cps (car ls) k)))))
