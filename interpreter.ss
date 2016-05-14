@@ -90,7 +90,7 @@
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (id exp)
-				(set! global-env (extend-env (list id) (list (eval-exp exp env)) global-env))]
+				(set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env))]
 			[do2-exp (bodies test)
 				; TODO: Handle/Remove?
 				(begin
@@ -280,11 +280,11 @@
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
-	(lambda (bodies env)
+	(lambda (bodies env k)
 		(let loop ([bodies bodies])
 			(if (null? (cdr bodies))
-				(eval-exp (car bodies) env)
-				(begin (eval-exp (car bodies) env) (loop (cdr bodies)))))))
+				(eval-exp (car bodies) env k)
+				(begin (eval-exp (car bodies) env (init-k)) (loop (cdr bodies)))))))
 
 
 (define extract-extra-args-closure-improper
@@ -307,13 +307,13 @@
 				(apply-prim-proc op args k)]
 			[closure (params bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env params args env))]
+				(eval-bodies bodies (extend-env params args env) k)]
 			[closure-list (listsymbol bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
+				(eval-bodies bodies (extend-env (list listsymbol) (list args) env) k)]
 			[closure-improper (params listsymbol bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env))]
+				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env) k)]
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
 				proc-value)])))
@@ -327,68 +327,68 @@
 			; TODO: Add exception handler
 			[(call/cc)
 				(apply-proc
-					(car vals)
+					(car args)
 					(list (continuation-proc k))
 					k)]
 			; TODO: Convert all to CPS
-			[(+) (apply + args)]
-			[(-) (apply - args)]
-			[(*) (apply * args)]
-			[(/) (apply / args)]
-			[(add1) (+ (1st args) 1)]
-			[(sub1) (- (1st args) 1)]
-			[(zero?) (= (1st args) 0)]
-			[(not) (not (1st args))]
-			[(=) (= (1st args) (2nd args))]
-			[(<) (< (1st args) (2nd args))]
-			[(>) (> (1st args) (2nd args))]
-			[(>=) (>= (1st args) (2nd args))]
-			[(<=) (<= (1st args) (2nd args))]
-			[(cons) (cons (1st args) (2nd args))]
-			[(car) (car (1st args))]
-			[(cdr) (cdr (1st args))]
-			[(caar) (caar (1st args))]
-			[(cdar) (cdar (1st args))]
-			[(cadr) (cadr (1st args))]
-			[(cddr) (cddr (1st args))]
-			[(caddr) (caddr (1st args))]
-			[(caadr) (caadr (1st args))]
-			[(cdadr) (cdadr (1st args))]
-			[(cdddr) (cdddr (1st args))]
-			[(caaar) (caaar (1st args))]
-			[(cadar) (cadar (1st args))]
-			[(cdaar) (cdaar (1st args))]
-			[(cddar) (cddar (1st args))]
-			[(list) args]
-			[(null?) (null? (1st args))]
-			[(append) (append (1st args) (2nd args))]
-			[(list-tail) (list-tail (1st args) (2nd args))]
-			[(assq) (assq (1st args) (2nd args))]
-			[(eq?) (eq? (1st args) (2nd args))]
-			[(eqv?) (eqv? (1st args) (2nd args))]
-			[(equal?) (equal? (1st args) (2nd args))]
-			[(atom?) (not (pair? (1st args)))]
-			[(length) (length (1st args))]
-			[(list->vector) (list->vector (1st args))]
-			[(list?) (list? (1st args))]
-			[(pair?) (pair? (1st args))]
-			[(procedure?) (proc-val? (1st args))]
-			[(vector->list) (vector->list (1st args))]
-			[(vector) (list->vector args)]
-			[(make-vector) (make-vector (1st args))]
-			[(vector-ref) (vector-ref (1st args) (2nd args))]
-			[(vector?) (vector? (1st args))]
-			[(number?) (number? (1st args))]
-			[(symbol?) (symbol? (1st args))]
+			[(+) (apply-k k (apply + args))]
+			[(-) (apply-k k (apply - args))]
+			[(*) (apply-k k (apply * args))]
+			[(/) (apply-k k (apply / args))]
+			[(add1) (apply-k k (+ (1st args) 1))]
+			[(sub1) (apply-k k (- (1st args) 1))]
+			[(zero?) (apply-k k (= (1st args) 0))]
+			[(not) (apply-k k (not (1st args)))]
+			[(=) (apply-k k (= (1st args) (2nd args)))]
+			[(<) (apply-k k (< (1st args) (2nd args)))]
+			[(>) (apply-k k (> (1st args) (2nd args)))]
+			[(>=) (apply-k k (>= (1st args) (2nd args)))]
+			[(<=) (apply-k k (<= (1st args) (2nd args)))]
+			[(cons) (apply-k k (cons (1st args) (2nd args)))]
+			[(car) (apply-k k (car (1st args)))]
+			[(cdr) (apply-k k (cdr (1st args)))]
+			[(caar) (apply-k k (caar (1st args)))]
+			[(cdar) (apply-k k (cdar (1st args)))]
+			[(cadr) (apply-k k (cadr (1st args)))]
+			[(cddr) (apply-k k (cddr (1st args)))]
+			[(caddr) (apply-k k (caddr (1st args)))]
+			[(caadr) (apply-k k (caadr (1st args)))]
+			[(cdadr) (apply-k k (cdadr (1st args)))]
+			[(cdddr) (apply-k k (cdddr (1st args)))]
+			[(caaar) (apply-k k (caaar (1st args)))]
+			[(cadar) (apply-k k (cadar (1st args)))]
+			[(cdaar) (apply-k k (cdaar (1st args)))]
+			[(cddar) (apply-k k (cddar (1st args)))]
+			[(list) (apply-k k args)]
+			[(null?) (apply-k k (null? (1st args)))]
+			[(append) (apply-k k (append (1st args) (2nd args)))]
+			[(list-tail) (apply-k k (list-tail (1st args) (2nd args)))]
+			[(assq) (apply-k k (assq (1st args) (2nd args)))]
+			[(eq?) (apply-k k (eq? (1st args) (2nd args)))]
+			[(eqv?) (apply-k k (eqv? (1st args) (2nd args)))]
+			[(equal?) (apply-k k (equal? (1st args) (2nd args)))]
+			[(atom?) (apply-k k (not (pair? (1st args))))]
+			[(length) (apply-k k (length (1st args)))]
+			[(list->vector) (apply-k k (list->vector (1st args)))]
+			[(list?) (apply-k k (list? (1st args)))]
+			[(pair?) (apply-k k (pair? (1st args)))]
+			[(procedure?) (apply-k k (proc-val? (1st args)))]
+			[(vector->list) (apply-k k (vector->list (1st args)))]
+			[(vector) (apply-k k (list->vector args))]
+			[(make-vector) (apply-k k (make-vector (1st args)))]
+			[(vector-ref) (apply-k k (vector-ref (1st args) (2nd args)))]
+			[(vector?) (apply-k k (vector? (1st args)))]
+			[(number?) (apply-k k (number? (1st args)))]
+			[(symbol?) (apply-k k (symbol? (1st args)))]
 			[(set-car!) (set-car! (1st args) (2nd args))]
 			[(set-cdr!) (set-cdr! (1st args) (2nd args))]
 			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
 			[(display) (display (1st args))]
 			[(newline) (newline)]
-			[(map) (map (lambda (x) (apply-proc (car args) (list x))) (cadr args))]
-			[(apply) (apply-proc (1st args) (2nd args))]
-			[(quotient) (quotient (1st args) (2nd args))]
-			[(void) (void)]
+			[(map) (apply-k k (map (lambda (x) (apply-proc (car args) (list x) (init-k))) (cadr args)))]
+			[(apply) (apply-proc (1st args) (2nd args) k)]
+			[(quotient) (apply-k k (quotient (1st args) (2nd args)))]
+			[(void) (apply-k k (void))]
 			[(call-with-values)
 				(apply-proc (2nd args) (apply-proc (1st args) '()))]
 			[(values) args]
