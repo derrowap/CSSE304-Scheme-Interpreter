@@ -23,15 +23,15 @@
 	(lambda () 
 		(set! global-env (make-init-env))))
 
+(define identity-proc
+	(lambda (x) x))
+
 (define top-level-eval
 	(lambda (form)
 		; later we may add things that are not expressions.
-		(eval-exp form (empty-env))))
+		(eval-exp form (empty-env) (init-k))))
 
 ; eval-exp is the main component of the interpreter
-
-(define identity-proc
-	(lambda (x) x))
 
 (define eval-exp
 	(lambda (exp env k)
@@ -61,14 +61,9 @@
 			[named-let-exp (name ids values body)
 				(eopl:error 'eval-exp "name-let-exp should have been transformed by syntax-expand: ~a" exp)]
 			[if-exp (test result)
-				; TODO: Handle
-				(if (eval-exp test env)
-					(eval-exp result env))]
+				(eval-exp test env (if-k result env k))]
 			[if-else-exp (test result elseRes)
-				; TODO: Handle
-				(if (eval-exp test env)
-					(eval-exp result env)
-					(eval-exp elseRes env))]
+				(eval-exp test env (if-else-k result elseRes env k))]
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;In class
@@ -104,9 +99,10 @@
 						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
 				; TODO: Handle.  Should this stay as apply-proc or should it become simply an eval-exp as suggested in the slides?
-				(let ([proc-value (eval-exp rator env)]
-						[args (eval-rands rands env)])
-					(apply-proc proc-value args))]
+				;(let ([proc-value (eval-exp rator env)]
+				;		[args (eval-rands rands env)])
+				;	(apply-proc proc-value args))]
+				(eval-exp rator env (rator-k rands env k))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
 (define case-or-expression
@@ -278,9 +274,9 @@
 ; evaluate the list of operands, putting results into a list
 
 (define eval-rands
-	(lambda (rands env)
+	(lambda (rands env k)
 		; TODO: Convert to map-cps
-		(map (lambda (x) (eval-exp x env)) rands)))
+		(apply-k k (map (lambda (x) (eval-exp x env (init-k))) rands))))
 
 ; Evaluates a series of bodies in the given environment.
 (define eval-bodies
@@ -308,7 +304,7 @@
 				(apply-k k (car args))]
 			[prim-proc (op)
 				; TODO: Handle
-				(apply-prim-proc op args)]
+				(apply-prim-proc op args k)]
 			[closure (params bodies env)
 				; TODO: Handle
 				(eval-bodies bodies (extend-env params args env))]
