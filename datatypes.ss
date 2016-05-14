@@ -139,6 +139,8 @@
 ; kind of procedure, but more kinds will be added later.
 
 (define-datatype proc-val proc-val?
+	[continuation-proc
+		(k continuation?)]
 	[prim-proc
 		(name symbol?)]
 	[closure

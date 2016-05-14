@@ -44,5 +44,6 @@
 						(apply-env-ref env sym succeed fail)))])))
 
 (define apply-env
-	(lambda (env sym succeed fail)
+	(lambda (env sym k succeed fail)
+		; TODO: Handle
 		(deref (apply-env-ref env sym succeed fail))))

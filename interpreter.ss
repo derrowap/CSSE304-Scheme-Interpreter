@@ -2,7 +2,7 @@
 
 ; top-level-eval evaluates a form in the global environment
 
-(define *prim-proc-names* '(+ - * / add1 sub1 zero? not = < > >= <= cons car cdr caar cdar cadr cddr
+(define *prim-proc-names* '(call/cc + - * / add1 sub1 zero? not = < > >= <= cons car cdr caar cdar cadr cddr
 								caddr caadr cdadr cdddr caaar cadar cdaar cddar list null? append list-tail
 								assq eq? eqv? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
@@ -13,6 +13,7 @@
 	(lambda ()
 		(extend-env
 		*prim-proc-names*
+		; TODO: Convert to map-cps?
 		(map prim-proc *prim-proc-names*)
 		(empty-env))))
 
@@ -33,11 +34,11 @@
 	(lambda (x) x))
 
 (define eval-exp
-	(lambda (exp env)
+	(lambda (exp env k)
 		(cases expression exp
-			[lit-exp (datum) datum]
+			[lit-exp (datum) (apply-k k datum)]
 			[var-exp (id)
-				(apply-env env id; look up its value.
+				(apply-env env id k; look up its value.
 					identity-proc ; procedure to call if id is in the environment 
 					(lambda () 
 					   	(apply-env-ref global-env id
@@ -46,11 +47,11 @@
 					   			(eopl:error 'apply-env ; procedure to call if id not in env
 					   				"variable not found in environment: ~s" id)))))]
 			[lambda-exp (ids body)
-				(closure ids body env)]
+				(apply-k k (closure ids body env))]
 			[lambda-list-exp (idlist body)
-				(closure-list idlist body env)]
+				(apply-k k (closure-list idlist body env))]
 			[lambda-improper-exp (ids idlist body)
-				(closure-improper ids idlist body env)]
+				(apply-k k (closure-improper ids idlist body env))]
 			[let-exp (ids idlist body)
 				(eopl:error 'eval-exp "let-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[let*-exp (ids values body)
@@ -60,9 +61,11 @@
 			[named-let-exp (name ids values body)
 				(eopl:error 'eval-exp "name-let-exp should have been transformed by syntax-expand: ~a" exp)]
 			[if-exp (test result)
+				; TODO: Handle
 				(if (eval-exp test env)
 					(eval-exp result env))]
 			[if-else-exp (test result elseRes)
+				; TODO: Handle
 				(if (eval-exp test env)
 					(eval-exp result env)
 					(eval-exp elseRes env))]
@@ -70,6 +73,7 @@
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			;In class
 			[set!-exp (id exp)
+				; TODO: Handle?
 				(set-ref!
 					(apply-env-ref env id
 						identity-proc ; procedure to call if id is in the environment 
@@ -79,7 +83,7 @@
 						   		(lambda ()
 						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 						   				"variable not found in environment: ~s" id)))))
-					(eval-exp exp env))]
+					(eval-exp exp env k))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -93,11 +97,13 @@
 			[define-exp (id exp)
 				(set! global-env (extend-env (list id) (list (eval-exp exp env)) global-env))]
 			[do2-exp (bodies test)
+				; TODO: Handle/Remove?
 				(begin
 					(eval-bodies bodies env)
 					(if (eval-exp test env)
 						(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
+				; TODO: Handle.  Should this stay as apply-proc or should it become simply an eval-exp as suggested in the slides?
 				(let ([proc-value (eval-exp rator env)]
 						[args (eval-rands rands env)])
 					(apply-proc proc-value args))]
@@ -105,10 +111,12 @@
 
 (define case-or-expression
 	(lambda (key test)
+		; TODO: Convert to map-cps?
 		(syntax-expand (or-exp (map (lambda (x) (app-exp (var-exp `equal?) (list key x))) test)))))
 
 (define build-temps
 	(lambda (values)
+		; TODO: Convert to map-cps?
 		(map syntax->datum (generate-temporaries values))))
 
 (define make-set!-list
@@ -125,17 +133,22 @@
 			[lit-exp (datum) (lit-exp datum)]
 			[var-exp (id) (var-exp id)]
 			[lambda-exp (ids body)
+				; TODO: Convert to map-cps?
 				(lambda-exp ids (map syntax-expand body))]
 			[lambda-list-exp (idlist body)
+				; TODO: Convert to map-cps?
 				(lambda-list-exp idlist (map syntax-expand body))]
 			[lambda-improper-exp (ids idlist body)
+				; TODO: Convert to map-cps?
 				(lambda-improper-exp ids idlist (map syntax-expand body))]
 			[let-exp (ids values body)
+				; TODO: Convert to map-cps?
 				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand values))]
 			[let*-exp (ids values body)
 				(app-exp (lambda-exp 
 							(list (car ids))
 							(if (null? (cdr ids))
+								; TODO: Convert to map-cps?
 								(map syntax-expand body)
 								(list (syntax-expand (let*-exp (cdr ids) (cdr values) body)))))
 					(list (syntax-expand (car values))))]
@@ -143,6 +156,7 @@
 				(syntax-expand
 					(let-exp
 						ids
+						; TODO: Convert to map-cps?
 						(map (lambda (x) (lit-exp #f)) ids)
 						(list (let ([temps (build-temps values)])
 							(let-exp
@@ -180,10 +194,12 @@
 					(syntax-expand result)
 					(syntax-expand elseRes))]
 			[begin-exp (body)
+				; TODO: Convert to map-cps?
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
 			[set!-exp (id exp)
 				(set!-exp id (syntax-expand exp))]
 			[cond-exp (tests results)
+				; TODO: Convert to map-cps?
 				(if (null? (cdr tests))
 					(if-exp
 						(syntax-expand (1st tests))
@@ -255,6 +271,7 @@
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)
+					; TODO: Convert to map-cps
 					(map syntax-expand rands))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
@@ -262,6 +279,7 @@
 
 (define eval-rands
 	(lambda (rands env)
+		; TODO: Convert to map-cps
 		(map (lambda (x) (eval-exp x env)) rands)))
 
 ; Evaluates a series of bodies in the given environment.
@@ -284,17 +302,22 @@
 ;  User-defined procedures will be added later.
 
 (define apply-proc
-	(lambda (proc-value args)
+	(lambda (proc-value args k)
 		(cases proc-val proc-value
+			[continuation-proc (k)
+				(apply-k k (car args))]
 			[prim-proc (op)
+				; TODO: Handle
 				(apply-prim-proc op args)]
 			[closure (params bodies env)
+				; TODO: Handle
 				(eval-bodies bodies (extend-env params args env))]
 			[closure-list (listsymbol bodies env)
+				; TODO: Handle
 				(eval-bodies bodies (extend-env (list listsymbol) (list args) env))]
 			[closure-improper (params listsymbol bodies env)
+				; TODO: Handle
 				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env))]
-			; You will add other cases
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
 				proc-value)])))
@@ -303,9 +326,15 @@
 ; built-in procedure individually.  We are "cheating" a little bit.
 
 (define apply-prim-proc
-	(lambda (prim-proc args)
+	(lambda (prim-proc args k)
 		(case prim-proc
 			; TODO: Add exception handler
+			[(call/cc)
+				(apply-proc
+					(car vals)
+					(list (continuation-proc k))
+					k)]
+			; TODO: Convert all to CPS
 			[(+) (apply + args)]
 			[(-) (apply - args)]
 			[(*) (apply * args)]
