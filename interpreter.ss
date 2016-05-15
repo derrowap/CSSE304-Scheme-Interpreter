@@ -13,7 +13,6 @@
 	(lambda ()
 		(extend-env
 		*prim-proc-names*
-		; TODO: Convert to map-cps?
 		(map prim-proc *prim-proc-names*)
 		(empty-env))))
 
@@ -94,7 +93,6 @@
 				(eval-exp exp env (define-k id k))]
 				;(apply-k k (set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env)))]
 			;[do2-exp (bodies test)
-			;	; TODO: Handle/Remove?
 			;	(begin
 			;		(eval-bodies bodies env)
 			;		(if (eval-exp test env)
@@ -105,12 +103,10 @@
 
 (define case-or-expression
 	(lambda (key test)
-		; TODO: Convert to map-cps?
 		(syntax-expand (or-exp (map (lambda (x) (app-exp (var-exp `equal?) (list key x))) test)))))
 
 (define build-temps
 	(lambda (values)
-		; TODO: Convert to map-cps?
 		(map syntax->datum (generate-temporaries values))))
 
 (define make-set!-list
@@ -127,22 +123,17 @@
 			[lit-exp (datum) (lit-exp datum)]
 			[var-exp (id) (var-exp id)]
 			[lambda-exp (ids body)
-				; TODO: Convert to map-cps?
 				(lambda-exp ids (map syntax-expand body))]
 			[lambda-list-exp (idlist body)
-				; TODO: Convert to map-cps?
 				(lambda-list-exp idlist (map syntax-expand body))]
 			[lambda-improper-exp (ids idlist body)
-				; TODO: Convert to map-cps?
 				(lambda-improper-exp ids idlist (map syntax-expand body))]
 			[let-exp (ids values body)
-				; TODO: Convert to map-cps?
 				(app-exp (lambda-exp ids (map syntax-expand body)) (map syntax-expand values))]
 			[let*-exp (ids values body)
 				(app-exp (lambda-exp 
 							(list (car ids))
 							(if (null? (cdr ids))
-								; TODO: Convert to map-cps?
 								(map syntax-expand body)
 								(list (syntax-expand (let*-exp (cdr ids) (cdr values) body)))))
 					(list (syntax-expand (car values))))]
@@ -150,7 +141,6 @@
 				(syntax-expand
 					(let-exp
 						ids
-						; TODO: Convert to map-cps?
 						(map (lambda (x) (lit-exp #f)) ids)
 						(list (let ([temps (build-temps values)])
 							(let-exp
@@ -188,12 +178,10 @@
 					(syntax-expand result)
 					(syntax-expand elseRes))]
 			[begin-exp (body)
-				; TODO: Convert to map-cps?
 				(app-exp (lambda-exp '() (map syntax-expand body)) '())]
 			[set!-exp (id exp)
 				(set!-exp id (syntax-expand exp))]
 			[cond-exp (tests results)
-				; TODO: Convert to map-cps?
 				(if (null? (cdr tests))
 					(if-exp
 						(syntax-expand (1st tests))
@@ -265,7 +253,6 @@
 			[app-exp (rator rands)
 				(app-exp
 					(syntax-expand rator)
-					; TODO: Convert to map-cps
 					(map syntax-expand rands))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
@@ -290,7 +277,6 @@
 				;		(lambda (inner-body-k) ; v2 is result of some inner body
 				;			(apply-k k v1))))))))
 
-		; TODO: this isn't CPS
 		;(let loop ([bodies bodies])
 		;	(if (null? (cdr bodies))
 		;		(eval-exp (car bodies) env k)
@@ -313,10 +299,8 @@
 			[continuation-proc (k)
 				(apply-k k (car args))]
 			[prim-proc (op)
-				; TODO: Handle
 				(apply-prim-proc op args k)]
 			[closure (params bodies env)
-				; TODO: Handle
 				(apply-k
 					(eval-bodies-k
 						bodies
@@ -325,7 +309,6 @@
 					k)]
 				;(eval-bodies bodies (extend-env params args env) k)]
 			[closure-list (listsymbol bodies env)
-				; TODO: Handle
 				(apply-k
 					(eval-bodies-k
 						bodies
@@ -334,7 +317,6 @@
 					k)]
 				;(eval-bodies bodies (extend-env (list listsymbol) (list args) env) k)]
 			[closure-improper (params listsymbol bodies env)
-				; TODO: Handle
 				(apply-k
 					(eval-bodies-k
 						bodies
@@ -361,7 +343,6 @@
 					(car args)
 					(list (continuation-proc k))
 					k)]
-			; TODO: Convert all to CPS
 			[(+) (apply-k k (apply + args))]
 			[(-) (apply-k k (apply - args))]
 			[(*) (apply-k k (apply * args))]
@@ -416,7 +397,12 @@
 			[(vector-set!) (apply-k k (vector-set! (1st args) (2nd args) (3rd args)))]
 			[(display) (apply-k k (display (1st args)))]
 			[(newline) (apply-k k (newline))]
-			[(map) (apply-k k (map (lambda (x) (apply-proc (car args) (list x) (init-k))) (cadr args)))]
+			[(map)
+				(map-cps
+					(lambda (x k)
+						(apply-proc (car args) (list x) k))
+					(cadr args)
+					k)]
 			[(apply) (apply-proc (1st args) (2nd args) k)]
 			[(quotient) (apply-k k (quotient (1st args) (2nd args)))]
 			[(void) (apply-k k (void))]
