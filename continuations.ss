@@ -27,6 +27,12 @@
 	[eval-bodies-k
 		(ls (list-of expression?))
 		(env environment?)
+		(k continuation?)]
+	[set-k
+		(ref pair?)
+		(k continuation?)]
+	[define-k
+		(id symbol?)
 		(k continuation?)])
 
 (define apply-k
@@ -51,7 +57,11 @@
 			[map-apply-k (ls k)
 				(apply-k k (cons v ls))]
 			[eval-bodies-k (ls env k)
-				(eval-bodies ls env k)])))
+				(eval-bodies ls env k)]
+			[set-k (ref k)
+				(apply-k k (set-ref! ref v))]
+			[define-k (id k)
+				(apply-k k (set! global-env (extend-env (list id) (list v) global-env)))])))
 
 (define eval-bodies
 	(lambda (ls env k)

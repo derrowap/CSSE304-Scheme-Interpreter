@@ -38,11 +38,13 @@
 		(cases expression exp
 			[lit-exp (datum) (apply-k k datum)]
 			[var-exp (id)
-				(apply-env env id k; look up its value.
-					identity-proc ; procedure to call if id is in the environment 
+				(apply-env env id; look up its value.
+					(lambda (x)
+						(apply-k k x)) ; procedure to call if id is in the environment 
 					(lambda () 
-					   	(apply-env-ref global-env id
-					   		identity-proc
+					   	(apply-env global-env id
+					   		(lambda (x)
+								(apply-k k x))
 					   		(lambda ()
 					   			(eopl:error 'apply-env ; procedure to call if id not in env
 					   				"variable not found in environment: ~s" id)))))]
@@ -67,10 +69,8 @@
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[set!-exp (id exp)
-				; TODO: Handle?
-				(apply-k
-					k
-					(set-ref!
+				(eval-exp exp env
+					(set-k
 						(apply-env-ref env id
 							identity-proc ; procedure to call if id is in the environment 
 							(lambda () 
@@ -79,7 +79,7 @@
 							   		(lambda ()
 							   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
 							   				"variable not found in environment: ~s" id)))))
-						(eval-exp exp env (init-k))))]
+						k))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -91,7 +91,8 @@
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (id exp)
-				(apply-k k (set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env)))]
+				(eval-exp exp env (define-k id k))]
+				;(apply-k k (set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env)))]
 			;[do2-exp (bodies test)
 			;	; TODO: Handle/Remove?
 			;	(begin
@@ -99,10 +100,6 @@
 			;		(if (eval-exp test env)
 			;			(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
-				; TODO: Handle.  Should this stay as apply-proc or should it become simply an eval-exp as suggested in the slides?
-				;(let ([proc-value (eval-exp rator env)]
-				;		[args (eval-rands rands env)])
-				;	(apply-proc proc-value args))]
 				(eval-exp rator env (rator-k rands env k))]
 			[else (eopl:error 'eval-exp "Bad abstract syntax: ~a" exp)])))
 
