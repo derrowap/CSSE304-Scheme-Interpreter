@@ -5,7 +5,8 @@
 		(env environment?)
 		(k continuation?)]
 	[rands-k
-		(proc-value proc-val?)
+		;(proc-value proc-val?)
+		(proc-value scheme-value?)
 		(k continuation?)]
 	[if-k
 		(result expression?)
@@ -22,6 +23,10 @@
 		(k continuation?)]
 	[map-apply-k
 		(ls list?)
+		(k continuation?)]
+	[eval-bodies-k
+		(ls (list-of expression?))
+		(env environment?)
 		(k continuation?)])
 
 (define apply-k
@@ -43,7 +48,12 @@
 			[map-recur-k (proc-cps list-car k)
 				(proc-cps list-car (map-apply-k v k))]
 			[map-apply-k (ls k)
-				(apply-k k (cons v ls))])))
+				(apply-k k (cons v ls))]
+			[eval-bodies-k (ls env k)
+				(if (null? (cdr ls))
+					(eval-exp (car ls) env k)
+					(eval-exp (car ls) env (eval-bodies-k (cdr ls) env k)))])))
+
 
 (define map-cps
 	(lambda (proc-cps ls k)

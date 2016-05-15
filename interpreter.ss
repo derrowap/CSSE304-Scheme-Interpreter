@@ -66,7 +66,6 @@
 				(eval-exp test env (if-else-k result elseRes env k))]
 			[begin-exp (body)
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
-			;In class
 			[set!-exp (id exp)
 				; TODO: Handle?
 				(set-ref!
@@ -91,12 +90,12 @@
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (id exp)
 				(set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env))]
-			[do2-exp (bodies test)
-				; TODO: Handle/Remove?
-				(begin
-					(eval-bodies bodies env)
-					(if (eval-exp test env)
-						(eval-exp (do2-exp bodies test) env)))]
+			;[do2-exp (bodies test)
+			;	; TODO: Handle/Remove?
+			;	(begin
+			;		(eval-bodies bodies env)
+			;		(if (eval-exp test env)
+			;			(eval-exp (do2-exp bodies test) env)))]
 			[app-exp (rator rands)
 				; TODO: Handle.  Should this stay as apply-proc or should it become simply an eval-exp as suggested in the slides?
 				;(let ([proc-value (eval-exp rator env)]
@@ -278,12 +277,25 @@
 		(map-cps (lambda (x k) (eval-exp x env k)) rands k)))
 
 ; Evaluates a series of bodies in the given environment.
-(define eval-bodies
-	(lambda (bodies env k)
-		(let loop ([bodies bodies])
-			(if (null? (cdr bodies))
-				(eval-exp (car bodies) env k)
-				(begin (eval-exp (car bodies) env (init-k)) (loop (cdr bodies)))))))
+;(define eval-bodies
+;	(lambda (bodies env k)
+;		(if (null? (cdr bodies))
+;			(eval-exp (car bodies) env k)
+;			(eval-exp (car bodies) env (eval-bodies-k (cdr bodies) env k)))))
+
+
+				;(lambda (last-in-body-k) ; v1 is result from right most body
+				;	(eval-exp
+				;		(car bodies)
+				;		env
+				;		(lambda (inner-body-k) ; v2 is result of some inner body
+				;			(apply-k k v1))))))))
+
+		; TODO: this isn't CPS
+		;(let loop ([bodies bodies])
+		;	(if (null? (cdr bodies))
+		;		(eval-exp (car bodies) env k)
+		;		(begin (eval-exp (car bodies) env (init-k)) (loop (cdr bodies)))))))
 
 
 (define extract-extra-args-closure-improper
@@ -306,13 +318,34 @@
 				(apply-prim-proc op args k)]
 			[closure (params bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env params args env) k)]
+				(apply-k
+					(eval-bodies-k
+						bodies
+						(extend-env params args env)
+						k)
+					k)]
+				;(eval-bodies bodies (extend-env params args env) k)]
 			[closure-list (listsymbol bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env (list listsymbol) (list args) env) k)]
+				(apply-k
+					(eval-bodies-k
+						bodies
+						(extend-env (list listsymbol) (list args) env)
+						k)
+					k)]
+				;(eval-bodies bodies (extend-env (list listsymbol) (list args) env) k)]
 			[closure-improper (params listsymbol bodies env)
 				; TODO: Handle
-				(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env) k)]
+				(apply-k
+					(eval-bodies-k
+						bodies
+						(extend-env 
+							(append params (list listsymbol)) 
+							(extract-extra-args-closure-improper params args)
+							env)
+						k)
+					k)]
+				;(eval-bodies bodies (extend-env (append params (list listsymbol)) (extract-extra-args-closure-improper params args) env) k)]
 			[else (error 'apply-proc
 				"Attempt to apply bad procedure: ~s" 
 				proc-value)])))
