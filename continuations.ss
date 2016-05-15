@@ -40,7 +40,8 @@
 				(apply-proc proc-value v k)]
 			[if-k (result env k)
 				(if v
-					(eval-exp result env k))]
+					(eval-exp result env k)
+					(apply-k k (void)))]
 			[if-else-k (result elseRes env k)
 				(if v
 					(eval-exp result env k)
@@ -50,9 +51,13 @@
 			[map-apply-k (ls k)
 				(apply-k k (cons v ls))]
 			[eval-bodies-k (ls env k)
-				(if (null? (cdr ls))
+				(eval-bodies ls env k)])))
+
+(define eval-bodies
+	(lambda (ls env k)
+		(if (null? (cdr ls))
 					(eval-exp (car ls) env k)
-					(eval-exp (car ls) env (eval-bodies-k (cdr ls) env k)))])))
+					(eval-exp (car ls) env (eval-bodies-k (cdr ls) env k)))))
 
 
 (define map-cps

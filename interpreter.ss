@@ -91,7 +91,7 @@
 			[while-exp (test bodies)
 				(eopl:error 'eval-exp "while-exp should have been transformed by syntax-expand: ~a" exp)]
 			[define-exp (id exp)
-				(set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env))]
+				(apply-k k (set! global-env (extend-env (list id) (list (eval-exp exp env (init-k))) global-env)))]
 			;[do2-exp (bodies test)
 			;	; TODO: Handle/Remove?
 			;	(begin
