@@ -68,16 +68,18 @@
 				(eopl:error 'eval-exp "begin-exp should have been transformed into a lambda-exp by syntax-expand: ~a" exp)]
 			[set!-exp (id exp)
 				; TODO: Handle?
-				(set-ref!
-					(apply-env-ref env id
-						identity-proc ; procedure to call if id is in the environment 
-						(lambda () 
-						   	(apply-env-ref global-env id
-						   		identity-proc
-						   		(lambda ()
-						   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
-						   				"variable not found in environment: ~s" id)))))
-					(eval-exp exp env k))]
+				(apply-k
+					k
+					(set-ref!
+						(apply-env-ref env id
+							identity-proc ; procedure to call if id is in the environment 
+							(lambda () 
+							   	(apply-env-ref global-env id
+							   		identity-proc
+							   		(lambda ()
+							   			(eopl:error 'apply-env-ref ; procedure to call if id not in env
+							   				"variable not found in environment: ~s" id)))))
+						(eval-exp exp env (init-k))))]
 			[cond-exp (tests results)
 				(eopl:error 'eval-exp "cond-exp should have been transformed into if-exp's by syntax-expand: ~a" exp)]
 			[and-exp (bodies)
@@ -412,11 +414,11 @@
 			[(vector?) (apply-k k (vector? (1st args)))]
 			[(number?) (apply-k k (number? (1st args)))]
 			[(symbol?) (apply-k k (symbol? (1st args)))]
-			[(set-car!) (set-car! (1st args) (2nd args))]
-			[(set-cdr!) (set-cdr! (1st args) (2nd args))]
-			[(vector-set!) (vector-set! (1st args) (2nd args) (3rd args))]
-			[(display) (display (1st args))]
-			[(newline) (newline)]
+			[(set-car!) (apply-k k (set-car! (1st args) (2nd args)))]
+			[(set-cdr!) (apply-k k (set-cdr! (1st args) (2nd args)))]
+			[(vector-set!) (apply-k k (vector-set! (1st args) (2nd args) (3rd args)))]
+			[(display) (apply-k k (display (1st args)))]
+			[(newline) (apply-k k (newline))]
 			[(map) (apply-k k (map (lambda (x) (apply-proc (car args) (list x) (init-k))) (cadr args)))]
 			[(apply) (apply-proc (1st args) (2nd args) k)]
 			[(quotient) (apply-k k (quotient (1st args) (2nd args)))]
