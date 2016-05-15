@@ -7,7 +7,7 @@
 								assq eq? eqv? equal? atom? length list->vector list? pair? procedure?
 								vector->list vector make-vector vector-ref vector? number?
 								symbol? set-car! set-cdr! vector-set! display newline
-								map apply quotient void call-with-values values))
+								map apply quotient void exit-list call-with-values values))
 
 (define make-init-env
 	(lambda ()
@@ -423,6 +423,7 @@
 			[(apply) (apply-proc (1st args) (2nd args) k)]
 			[(quotient) (apply-k k (quotient (1st args) (2nd args)))]
 			[(void) (apply-k k (void))]
+			[(exit-list) (apply-k (init-k) args)]
 			[(call-with-values)
 				(apply-proc (2nd args) (apply-proc (1st args) '()))]
 			[(values) args]
